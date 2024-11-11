@@ -3,15 +3,17 @@ from torch.utils.data import DataLoader
 import torchvision
 import torch
 
-import paths
+from src.utils import DatasetSwitch
+from src import paths
 
 registered_datasets = {}
 
 
 def register_dataset(name):
     def decorator(func):
+        str_name = str(name)
         # we make sure that the path is set in paths.py
-        func.__default_path__ = getattr(paths, f"{name.upper()}_ROOT")
+        func.__default_path__ = getattr(paths, f"{str_name.upper()}_ROOT")
         # we register the function
         registered_datasets[name] = func
         return func
@@ -66,7 +68,7 @@ class AddInverse(torch.nn.Module):
         return torch.cat([in_tensor, 1 - in_tensor], dim=self.dim)
 
 
-@register_dataset("cifar10")
+@register_dataset(DatasetSwitch.CIFAR10)
 def get_cifar10_dataset(img_size=32, add_inverse=False):
 
     transform = torchvision.transforms.Compose(
@@ -103,7 +105,7 @@ def get_cifar10_dataset(img_size=32, add_inverse=False):
     return training_data, test_data
 
 
-@register_dataset("mist")
+@register_dataset(DatasetSwitch.MNIST)
 def get_mnist_dataset(img_size):
     transform = torchvision.transforms.Compose(
         [
