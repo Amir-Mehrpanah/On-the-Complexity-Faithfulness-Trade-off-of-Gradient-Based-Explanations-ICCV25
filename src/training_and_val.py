@@ -11,6 +11,12 @@ from src.utils import ActivationSwitch, LossSwitch, DatasetSwitch
 def get_inputs():
     parser = argparse.ArgumentParser(description="Get inputs for the model.")
     parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help="Port to listen for debugger attach",
+    )
+    parser.add_argument(
         "--dataset",
         type=DatasetSwitch.convert,
         required=True,
@@ -37,7 +43,7 @@ def get_inputs():
     parser.add_argument(
         "--img_size",
         type=int,
-        default=64,
+        default=None,
         help="Image size",
     )
     parser.add_argument(
@@ -54,7 +60,7 @@ def get_inputs():
     )
     parser.set_defaults(bias=True)
     parser.add_argument(
-        "--no-bias",
+        "--nobias",
         dest="bias",
         action="store_false",
         help="if the network has no bias",
@@ -78,9 +84,9 @@ def get_inputs():
 def train(dataloader, model, loss_fn, optimizer, device):
     model.train()
     progress = tqdm.tqdm(dataloader)
-    for X, y in progress:
-        X, y = X.to(device), y.to(device)
-        pred = model(X)
+    for x, y in progress:
+        x, y = x.to(device), y.to(device)
+        pred = model(x)
 
         loss = loss_fn(pred, y)
 
@@ -150,6 +156,7 @@ def convert_str_to_loss_fn(loss):
 
 def main(
     *,
+    root_path,
     activation,
     loss,
     batch_size,
@@ -160,6 +167,7 @@ def main(
     ckpt_mod,
     add_inverse,
     dataset,
+    **kwargs,
 ):
     activation_fn = convert_str_to_activation_fn(activation)
     loss_fn = convert_str_to_loss_fn(loss)
@@ -167,6 +175,7 @@ def main(
     # DATASET AND DATALOADERS
     train_dataloader, test_dataloader = get_training_and_test_data(
         dataset,
+        root_path,
         batch_size,
         img_size=img_size,
         add_inverse=add_inverse,

@@ -172,3 +172,6 @@ requirements.txt
 
 /checkpoints
 **/__pycache__/
+*/__pycache__/*.pyc
+.tmp/*
+logs/*

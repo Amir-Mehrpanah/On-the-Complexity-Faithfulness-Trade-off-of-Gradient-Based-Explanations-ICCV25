@@ -13,7 +13,7 @@ def register_dataset(name):
     def decorator(func):
         str_name = str(name)
         # we make sure that the path is set in paths.py
-        func.__default_path__ = getattr(paths, f"{str_name.upper()}_ROOT")
+        func.__root_path__ = getattr(paths, f"{str_name.upper()}_ROOT")
         # we register the function
         registered_datasets[name] = func
         return func
@@ -21,7 +21,13 @@ def register_dataset(name):
     return decorator
 
 
-def get_training_and_test_data(dataset, batch_size, **dataset_kwargs):
+def get_training_and_test_data(
+    dataset,
+    root_path,
+    batch_size,
+    num_workers=2,
+    **dataset_kwargs,
+):
 
     if dataset not in registered_datasets:
         raise ValueError(
@@ -29,6 +35,7 @@ def get_training_and_test_data(dataset, batch_size, **dataset_kwargs):
         )
     # dict lookup instead of if-else
     training_data, test_data = registered_datasets[dataset](
+        root_path=root_path,
         **dataset_kwargs,
     )
     # DATA LOADER
@@ -36,12 +43,12 @@ def get_training_and_test_data(dataset, batch_size, **dataset_kwargs):
         training_data,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=2,
+        num_workers=num_workers,
     )
     test_dataloader = DataLoader(
         test_data,
         batch_size=batch_size,
-        num_workers=2,
+        num_workers=num_workers,
     )
     return train_dataloader, test_dataloader
 
@@ -69,12 +76,12 @@ class AddInverse(torch.nn.Module):
 
 
 @register_dataset(DatasetSwitch.CIFAR10)
-def get_cifar10_dataset(img_size=32, add_inverse=False):
+def get_cifar10_dataset(root_path, img_size=32, add_inverse=False):
 
     transform = torchvision.transforms.Compose(
         [
             torchvision.transforms.RandomHorizontalFlip(),
-            torchvision.transforms.RandomCrop(img_size, padding=4),
+            torchvision.transforms.RandomCrop((img_size, img_size), padding=4),
             torchvision.transforms.ToTensor(),
             (
                 AddInverse()
@@ -88,7 +95,7 @@ def get_cifar10_dataset(img_size=32, add_inverse=False):
     label_transform = None
 
     training_data = datasets.CIFAR10(
-        root=paths.CIFAR10_ROOT,
+        root=root_path,
         train=True,
         download=False,
         transform=transform,
@@ -96,7 +103,7 @@ def get_cifar10_dataset(img_size=32, add_inverse=False):
     )
 
     test_data = datasets.CIFAR10(
-        root=paths.CIFAR10_ROOT,
+        root=root_path,
         train=False,
         download=False,
         transform=transform,
@@ -106,7 +113,7 @@ def get_cifar10_dataset(img_size=32, add_inverse=False):
 
 
 @register_dataset(DatasetSwitch.MNIST)
-def get_mnist_dataset(img_size):
+def get_mnist_dataset(root_path, img_size=28, **kwargs):
     transform = torchvision.transforms.Compose(
         [
             torchvision.transforms.Resize((img_size, img_size)),
@@ -119,7 +126,7 @@ def get_mnist_dataset(img_size):
     label_transform = None
 
     training_data = datasets.MNIST(
-        root=paths.MNIST_ROOT,
+        root=root_path,
         train=True,
         download=False,
         transform=transform,
@@ -127,7 +134,7 @@ def get_mnist_dataset(img_size):
     )
 
     test_data = datasets.MNIST(
-        root=paths.MNIST_ROOT,
+        root=root_path,
         train=False,
         download=False,
         transform=transform,
