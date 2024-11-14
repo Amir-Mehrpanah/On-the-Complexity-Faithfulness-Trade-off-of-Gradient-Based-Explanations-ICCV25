@@ -38,6 +38,10 @@ def get_training_and_test_data(
         root_path=root_path,
         **dataset_kwargs,
     )
+    num_classes = len(training_data.classes)
+    input_shape = training_data[0][0].shape
+    assert input_shape == test_data[0][0].shape
+
     # DATA LOADER
     train_dataloader = DataLoader(
         training_data,
@@ -50,7 +54,7 @@ def get_training_and_test_data(
         batch_size=batch_size,
         num_workers=num_workers,
     )
-    return train_dataloader, test_dataloader
+    return train_dataloader, test_dataloader, input_shape, num_classes
 
 
 CIFAR10_MEAN = (0.49139968, 0.48215841, 0.44653091)
@@ -76,8 +80,8 @@ class AddInverse(torch.nn.Module):
 
 
 @register_dataset(DatasetSwitch.CIFAR10)
-def get_cifar10_dataset(root_path, img_size=32, add_inverse=False):
-
+def get_cifar10_dataset(root_path, img_size, add_inverse=False):
+    img_size = 32 if img_size is None else img_size
     transform = torchvision.transforms.Compose(
         [
             torchvision.transforms.RandomHorizontalFlip(),
@@ -113,7 +117,8 @@ def get_cifar10_dataset(root_path, img_size=32, add_inverse=False):
 
 
 @register_dataset(DatasetSwitch.MNIST)
-def get_mnist_dataset(root_path, img_size=28, **kwargs):
+def get_mnist_dataset(root_path, img_size, **kwargs):
+    img_size = 28 if img_size is None else img_size
     transform = torchvision.transforms.Compose(
         [
             torchvision.transforms.Resize((img_size, img_size)),

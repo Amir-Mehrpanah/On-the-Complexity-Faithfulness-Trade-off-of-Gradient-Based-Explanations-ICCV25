@@ -83,40 +83,46 @@ def get_inputs():
 
 def train(dataloader, model, loss_fn, optimizer, device):
     model.train()
-    progress = tqdm.tqdm(dataloader)
-    for x, y in progress:
+    size = len(dataloader.dataset)
+    total_loss, correct = 0, 0
+    for x, y in dataloader:
         x, y = x.to(device), y.to(device)
         pred = model(x)
 
         loss = loss_fn(pred, y)
-
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        progress.set_description(f"loss: {loss.item():>7f}")
+
+        total_loss += loss.item()
+        correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+
+    total_loss = total_loss / size
+    correct = correct / size
+
+    print(
+        f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, test loss: {total_loss:>8f} \n"
+    )
 
 
 def test(dataloader, model, loss_fn, device):
     size = len(dataloader.dataset)
-    num_batches = len(dataloader)
     model.eval()
-    test_loss, correct = 0, 0
+    total_loss, correct = 0, 0
 
     with torch.no_grad():
-        for X, y in dataloader:
-            X, y = X.to(device), y.to(device)
-            pred = model(X)
+        for x, y in dataloader:
+            x, y = x.to(device), y.to(device)
+            pred = model(x)
 
-            test_loss += loss_fn(pred, y).item()
-
-            y = y.argmax(1)
+            total_loss += loss_fn(pred, y).item()
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
 
-    test_loss /= num_batches
+    total_loss /= size
     correct /= size
 
     print(
-        f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, test loss: {test_loss:>8f} \n"
+        f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, test loss: {total_loss:>8f} \n"
     )
 
 
@@ -146,10 +152,10 @@ def convert_str_to_activation_fn(activation):
 
 def convert_str_to_loss_fn(loss):
     if LossSwitch.MSE == loss:
-        return nn.MSELoss()
+        return nn.MSELoss(reduce="sum")
 
     if LossSwitch.CE == loss:
-        return nn.CrossEntropyLoss()
+        return nn.CrossEntropyLoss(reduce="sum")
 
     raise NameError(loss)
 
@@ -167,24 +173,32 @@ def main(
     ckpt_mod,
     add_inverse,
     dataset,
+    port,
     **kwargs,
 ):
     activation_fn = convert_str_to_activation_fn(activation)
     loss_fn = convert_str_to_loss_fn(loss)
 
     # DATASET AND DATALOADERS
-    train_dataloader, test_dataloader = get_training_and_test_data(
-        dataset,
-        root_path,
-        batch_size,
-        img_size=img_size,
-        add_inverse=add_inverse,
+    train_dataloader, test_dataloader, input_shape, num_classes = (
+        get_training_and_test_data(
+            dataset,
+            root_path,
+            batch_size,
+            img_size=img_size,
+            add_inverse=add_inverse,
+        )
     )
 
     # MODEL
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cpu" if port == 0 else device
+    print(f"Using {device} device")
+
     torch.cuda.empty_cache()
     model = SimpleConvNet(
+        input_shape=input_shape,
+        num_classes=num_classes,
         activation=activation_fn,
         conv_bias=bias,
         fc_bias=True,
@@ -196,6 +210,7 @@ def main(
         print(f"Epoch {epoch+1}\n-------------------------------")
         train(train_dataloader, model, loss_fn, optimizer, device)
         test(test_dataloader, model, loss_fn, device)
+
         if epoch % ckpt_mod == 0:
             save_pth(model, f"checkpoints/{activation}_{bias}.pth")
             break

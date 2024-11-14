@@ -14,7 +14,7 @@ from src import training_and_val
 
 
 def main(args):
-    if args.get("port", None) is not None:
+    if args["port"] is not None and args["port"] > 0:
         job_env = submitit.JobEnvironment()
         print(f"Debugger is running on node {job_env.hostname} port {args['port']}")
         debugpy.listen((job_env.hostname, args["port"]))
@@ -65,8 +65,11 @@ if __name__ == "__main__":
             "gpus": 1,
         },
     )
-    main(args)
-    # job = executor.submit(main, args)
-    print("Job submitted")
-    # wait until the job has finished
-    job.wait()
+    if args["port"] == 0:
+        print("Running in locally")
+        main(args)
+    else:
+        job = executor.submit(main, args)
+        print("Job submitted")
+        # wait until the job has finished
+        job.wait()
