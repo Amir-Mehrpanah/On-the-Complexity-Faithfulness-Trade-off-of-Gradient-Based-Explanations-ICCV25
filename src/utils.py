@@ -38,6 +38,7 @@ class ActivationSwitch(ConvertableEnum):
 class DatasetSwitch(ConvertableEnum):
     CIFAR10 = 200
     MNIST = 201
+    IMAGENETTE = 202
 
 
 def get_save_path(activation, bias, epoch, add_inverse):

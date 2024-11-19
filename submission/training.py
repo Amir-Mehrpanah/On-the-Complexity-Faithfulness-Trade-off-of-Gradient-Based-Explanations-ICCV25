@@ -1,3 +1,4 @@
+import subprocess
 import submitit
 import os
 import sys
@@ -24,7 +25,10 @@ def main(args):
 
     # data preparation commands here
     DATA_DIR = datasets.registered_datasets[args["dataset"]].__root_path__
-    BASE_DIR = os.path.basename(DATA_DIR)
+    if DATA_DIR.endswith(".tgz"):
+        BASE_DIR = os.path.basename(DATA_DIR)[:-4]
+    else:
+        BASE_DIR = os.path.basename(DATA_DIR)
 
     if args["port"] == 0:
         # Running locally
@@ -36,25 +40,58 @@ def main(args):
     os.makedirs(COMPUTE_DATA_DIR_BASE_DIR, exist_ok=True)
 
     os.system("module load Fpart/1.5.1-gcc-8.5.0")
-    if (
-        os.system(f"time fpsync -n 8 -m tarify -s 2000M {DATA_DIR} {COMPUTE_DATA_DIR}")
-        != 0
-    ):
-        raise RuntimeError("Failed to sync data")
-    if (
-        os.system(
-            f"time ls {COMPUTE_DATA_DIR}/*.tar | xargs -n 1 -P 8 -I @ tar -xf @ -C {COMPUTE_DATA_DIR_BASE_DIR}"
-        )
-        != 0
-    ):
+
+    result = subprocess.run(
+        [
+            "time",
+            "fpsync",
+            "-n",
+            "8",
+            "-m",
+            "tarify",
+            "-s",
+            "2000M",
+            DATA_DIR,
+            COMPUTE_DATA_DIR,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to sync data: {result.stderr}")
+
+    result = subprocess.run(
+        [
+            "time",
+            "ls",
+            f"{COMPUTE_DATA_DIR}/*.tar",
+            "|",
+            "xargs",
+            "-n",
+            "1",
+            "-P",
+            "8",
+            "-I",
+            "@",
+            "tar",
+            "-xf",
+            "@",
+            "-C",
+            f"{COMPUTE_DATA_DIR_BASE_DIR}",
+        ],
+        capture_output=True,
+        text=True,
+        shell=True,
+    )
+    if result.returncode != 0:
         raise RuntimeError("Failed to extract data")
 
     print("Running main job...")
     print(f"Data is in {COMPUTE_DATA_DIR_BASE_DIR}")
-    training_and_val.main(
-        root_path=COMPUTE_DATA_DIR,
-        **args,
-    )
+    # training_and_val.main(
+    #     root_path=COMPUTE_DATA_DIR,
+    #     **args,
+    # )
 
 
 if __name__ == "__main__":
