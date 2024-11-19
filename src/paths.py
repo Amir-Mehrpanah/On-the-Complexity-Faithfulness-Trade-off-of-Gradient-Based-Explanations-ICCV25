@@ -1,4 +1,4 @@
-DATASETS_COMMON = "/proj/azizpour-group/datasets/"
+DATASETS_COMMON = "/proj/azizpour-group/datasets"
 
 MNIST_ROOT = f"{DATASETS_COMMON}/MNIST/"
 CIFAR10_ROOT = f"{DATASETS_COMMON}/cifar-10-batches-py"

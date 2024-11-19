@@ -1,14 +1,20 @@
 import argparse
 import torch
-from torch import nn
 
 from src.models import SimpleConvNet
 from src.datasets import get_training_and_test_data
-from src.utils import ActivationSwitch, LossSwitch, DatasetSwitch
+from src.utils import (
+    ActivationSwitch,
+    LossSwitch,
+    DatasetSwitch,
+    convert_str_to_activation_fn,
+    convert_str_to_loss_fn,
+    save_pth,
+    get_save_path,
+)
 
-from torch.utils.tensorboard import SummaryWriter
-
-writer = SummaryWriter()
+# from torch.utils.tensorboard import SummaryWriter
+# writer = SummaryWriter()
 
 
 def get_inputs():
@@ -194,13 +200,21 @@ def main(
             device,
         )
 
-        writer.add_scalar("Loss/train", train_loss, epoch)
-        writer.add_scalar("Loss/test", test_loss, epoch)
-        writer.add_scalar("Accuracy/train", train_acc, epoch)
-        writer.add_scalar("Accuracy/test", test_acc, epoch)
+        # writer.add_scalar("Loss/train", train_loss, epoch)
+        # writer.add_scalar("Loss/test", test_loss, epoch)
+        # writer.add_scalar("Accuracy/train", train_acc, epoch)
+        # writer.add_scalar("Accuracy/test", test_acc, epoch)
 
         if epoch % ckpt_mod == 0 and epoch > 0:
-            save_pth(model, f"checkpoints/{activation}_{bias}_{epoch}_{loss}.pth")
+            save_pth(
+                model,
+                path=get_save_path(
+                    activation,
+                    bias,
+                    epoch,
+                    add_inverse,
+                ),
+            )
         scheduler.step()
 
 

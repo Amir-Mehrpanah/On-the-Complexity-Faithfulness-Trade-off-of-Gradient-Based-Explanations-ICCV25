@@ -40,6 +40,10 @@ class DatasetSwitch(ConvertableEnum):
     MNIST = 201
 
 
+def get_save_path(activation, bias, epoch, add_inverse):
+    return f"checkpoints/{activation}_{bias}_{epoch}_{add_inverse}.pth"
+
+
 def save_pth(model, path):
     """Saves the model to a .pth file.
 

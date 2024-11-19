@@ -9,7 +9,7 @@ workspace_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 os.chdir(workspace_dir)
 sys.path.insert(0, workspace_dir)
 
-from paths import get_local_data_dir, get_remote_data_dir
+from src.paths import get_local_data_dir, get_remote_data_dir
 from src import datasets
 from src import training_and_val
 
@@ -32,7 +32,8 @@ def main(args):
     else:
         COMPUTE_DATA_DIR = get_remote_data_dir(args["dataset"])
 
-    os.makedirs(f"{COMPUTE_DATA_DIR}/{BASE_DIR}", exist_ok=True)
+    COMPUTE_DATA_DIR_BASE_DIR = os.path.join(COMPUTE_DATA_DIR, BASE_DIR)
+    os.makedirs(COMPUTE_DATA_DIR_BASE_DIR, exist_ok=True)
 
     os.system("module load Fpart/1.5.1-gcc-8.5.0")
     if (
@@ -42,13 +43,14 @@ def main(args):
         raise RuntimeError("Failed to sync data")
     if (
         os.system(
-            f"time ls {COMPUTE_DATA_DIR}/*.tar | xargs -n 1 -P 8 -I @ tar -xf @ -C {COMPUTE_DATA_DIR}/{BASE_DIR}"
+            f"time ls {COMPUTE_DATA_DIR}/*.tar | xargs -n 1 -P 8 -I @ tar -xf @ -C {COMPUTE_DATA_DIR_BASE_DIR}"
         )
         != 0
     ):
         raise RuntimeError("Failed to extract data")
 
     print("Running main job...")
+    print(f"Data is in {COMPUTE_DATA_DIR_BASE_DIR}")
     training_and_val.main(
         root_path=COMPUTE_DATA_DIR,
         **args,
