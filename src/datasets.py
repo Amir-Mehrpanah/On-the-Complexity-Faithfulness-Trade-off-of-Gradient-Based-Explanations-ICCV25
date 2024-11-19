@@ -82,7 +82,15 @@ class AddInverse(torch.nn.Module):
 @register_dataset(DatasetSwitch.CIFAR10)
 def get_cifar10_dataset(root_path, img_size, add_inverse=False):
     img_size = 32 if img_size is None else img_size
-    transform = torchvision.transforms.Compose(
+    label_transform = None
+
+    training_data = get_cifar_train(root_path, img_size, add_inverse, label_transform)
+    test_data = get_cifar_test(root_path, add_inverse, label_transform)
+    return training_data, test_data
+
+
+def get_cifar_train(root_path, img_size, add_inverse=False, label_transform=None):
+    train_transform = torchvision.transforms.Compose(
         [
             torchvision.transforms.RandomHorizontalFlip(),
             torchvision.transforms.RandomCrop((img_size, img_size), padding=4),
@@ -94,26 +102,37 @@ def get_cifar10_dataset(root_path, img_size, add_inverse=False):
             ),
         ]
     )
-
-    label_dtype = torch.float32
-    label_transform = None
-
     training_data = datasets.CIFAR10(
         root=root_path,
         train=True,
         download=False,
-        transform=transform,
+        transform=train_transform,
         target_transform=label_transform,
     )
 
+    return training_data
+
+
+def get_cifar_test(root_path, add_inverse=False, label_transform=None):
+    test_transform = torchvision.transforms.Compose(
+        [
+            torchvision.transforms.ToTensor(),
+            (
+                AddInverse()
+                if add_inverse
+                else torchvision.transforms.Normalize(CIFAR10_MEAN, CIFAR10_STD)
+            ),
+        ]
+    )
     test_data = datasets.CIFAR10(
         root=root_path,
         train=False,
         download=False,
-        transform=transform,
+        transform=test_transform,
         target_transform=label_transform,
     )
-    return training_data, test_data
+
+    return test_data
 
 
 @register_dataset(DatasetSwitch.MNIST)

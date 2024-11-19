@@ -1,15 +1,23 @@
 import argparse
 import torch
-import tqdm
 from torch import nn
 
 from src.models import SimpleConvNet
 from src.datasets import get_training_and_test_data
 from src.utils import ActivationSwitch, LossSwitch, DatasetSwitch
 
+from torch.utils.tensorboard import SummaryWriter
+
+writer = SummaryWriter()
+
 
 def get_inputs():
     parser = argparse.ArgumentParser(description="Get inputs for the model.")
+    parser.add_argument(
+        "--block_main",
+        action="store_true",
+        help="Block the main thread",
+    )
     parser.add_argument(
         "--port",
         type=int,
@@ -100,9 +108,8 @@ def train(dataloader, model, loss_fn, optimizer, device):
     total_loss = total_loss / size
     correct = correct / size
 
-    print(
-        f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, test loss: {total_loss:>8f} \n"
-    )
+    print(f"train accuracy: {(100*correct):>0.1f}%, train loss: {total_loss:>8f}")
+    return total_loss, correct
 
 
 def test(dataloader, model, loss_fn, device):
@@ -120,44 +127,8 @@ def test(dataloader, model, loss_fn, device):
 
     total_loss /= size
     correct /= size
-
-    print(
-        f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, test loss: {total_loss:>8f} \n"
-    )
-
-
-def save_pth(model, path):
-    """Saves the model to a .pth file.
-
-    Args:
-      model: The model to save.
-      path: The path to save the model to.
-    """
-    torch.save(model.state_dict(), path)
-
-
-def convert_str_to_activation_fn(activation):
-    if ActivationSwitch.RELU == activation:
-        return nn.ReLU()
-
-    str_activation = str(activation)
-    if "SOFTPLUS" in str_activation:
-        beta = str_activation.replace("SOFTPLUS_B", "")
-        beta = float(beta)
-
-        return nn.Softplus(beta)
-
-    raise NameError(str_activation)
-
-
-def convert_str_to_loss_fn(loss):
-    if LossSwitch.MSE == loss:
-        return nn.MSELoss(reduce="sum")
-
-    if LossSwitch.CE == loss:
-        return nn.CrossEntropyLoss(reduce="sum")
-
-    raise NameError(loss)
+    print(f"test accuracy: {(100*correct):>0.1f}%, test loss: {total_loss:>8f}")
+    return total_loss, correct
 
 
 def main(
@@ -204,16 +175,33 @@ def main(
         fc_bias=True,
     ).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
     print(f"Experiment activation {activation} loss {loss} bias {bias}")
+
     for epoch in range(epochs):
         print(f"Epoch {epoch+1}\n-------------------------------")
-        train(train_dataloader, model, loss_fn, optimizer, device)
-        test(test_dataloader, model, loss_fn, device)
+        train_loss, train_acc = train(
+            train_dataloader,
+            model,
+            loss_fn,
+            optimizer,
+            device,
+        )
+        test_loss, test_acc = test(
+            test_dataloader,
+            model,
+            loss_fn,
+            device,
+        )
 
-        if epoch % ckpt_mod == 0:
-            save_pth(model, f"checkpoints/{activation}_{bias}.pth")
-            break
+        writer.add_scalar("Loss/train", train_loss, epoch)
+        writer.add_scalar("Loss/test", test_loss, epoch)
+        writer.add_scalar("Accuracy/train", train_acc, epoch)
+        writer.add_scalar("Accuracy/test", test_acc, epoch)
+
+        if epoch % ckpt_mod == 0 and epoch > 0:
+            save_pth(model, f"checkpoints/{activation}_{bias}_{epoch}_{loss}.pth")
+        scheduler.step()
 
 
 if __name__ == "__main__":

@@ -175,3 +175,4 @@ requirements.txt
 */__pycache__/*.pyc
 .tmp/*
 logs/*
+src/__pycache__/*
