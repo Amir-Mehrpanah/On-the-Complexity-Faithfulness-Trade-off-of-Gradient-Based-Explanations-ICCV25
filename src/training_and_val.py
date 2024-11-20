@@ -1,6 +1,6 @@
 import argparse
 import torch
-
+from datetime import datetime
 from src.models import SimpleConvNet
 from src.datasets import get_training_and_test_data
 from src.utils import (
@@ -12,9 +12,6 @@ from src.utils import (
     save_pth,
     get_save_path,
 )
-
-# from torch.utils.tensorboard import SummaryWriter
-# writer = SummaryWriter()
 
 
 def get_inputs():
@@ -90,38 +87,66 @@ def get_inputs():
         action="store_true",
         help="add the inverse of the input image to the input",
     )
+    parser.add_argument(
+        "--num_workers",
+        type=int,
+        default=2,
+        help="number of workers for dataloaders",
+    )
+    parser.add_argument(
+        "--prefetch_factor",
+        type=int,
+        default=4,
+        help="prefetch factor for dataloaders",
+    )
+    parser.add_argument(
+        "--tb_postfix",
+        type=str,
+        default=datetime.now().strftime("%Y%m%d-%H%M%S"),
+        help="postfix for tensorboard logs",
+    )
 
     args = parser.parse_args()
-    return vars(args)
+    args = vars(args)
+    return args
 
 
-def train(dataloader, model, loss_fn, optimizer, device):
+def train(dataloader, model, loss_fn, optimizer, epoch, device, writer):
     model.train()
     size = len(dataloader.dataset)
-    total_loss, correct = 0, 0
-    for x, y in dataloader:
+    total_loss, total_correct = 0, 0
+    for step, (x, y) in enumerate(dataloader):
+        optimizer.zero_grad()
         x, y = x.to(device), y.to(device)
         pred = model(x)
 
         loss = loss_fn(pred, y)
-        optimizer.zero_grad()
+        total_loss += loss.item()
+        loss = loss / x.size(0)
         loss.backward()
         optimizer.step()
 
-        total_loss += loss.item()
-        correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+        correct = (pred.argmax(1) == y).type(torch.float).sum().item()
+        total_correct += correct
+        if writer is not None:
+            writer.add_scalar("Loss/train", loss.item(), step + size * epoch)
+            writer.add_scalar(
+                "Accuracy/train", correct / x.size(0), step + size * epoch
+            )
 
     total_loss = total_loss / size
-    correct = correct / size
+    total_correct = total_correct / size
+    if writer is not None:
+        writer.add_scalar("Loss/train_epoch", total_loss, epoch)
+        writer.add_scalar("Accuracy/train_epoch", total_correct, epoch)
+    print(f"train accuracy: {(100*total_correct):>0.1f}%, train loss: {total_loss:>8f}")
+    return total_loss, total_correct
 
-    print(f"train accuracy: {(100*correct):>0.1f}%, train loss: {total_loss:>8f}")
-    return total_loss, correct
 
-
-def test(dataloader, model, loss_fn, device):
+def test(dataloader, model, loss_fn, epoch, device, writer):
     size = len(dataloader.dataset)
     model.eval()
-    total_loss, correct = 0, 0
+    total_loss, total_correct = 0, 0
 
     with torch.no_grad():
         for x, y in dataloader:
@@ -129,12 +154,16 @@ def test(dataloader, model, loss_fn, device):
             pred = model(x)
 
             total_loss += loss_fn(pred, y).item()
-            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+            correct = (pred.argmax(1) == y).type(torch.float).sum().item()
+            total_correct += correct
 
     total_loss /= size
-    correct /= size
-    print(f"test accuracy: {(100*correct):>0.1f}%, test loss: {total_loss:>8f}")
-    return total_loss, correct
+    total_correct /= size
+    if writer is not None:
+        writer.add_scalar("Loss/test_epoch", total_loss, epoch)
+        writer.add_scalar("Accuracy/test_epoch", total_correct, epoch)
+    print(f"test accuracy: {(100*total_correct):>0.1f}%, test loss: {total_loss:>8f}")
+    return total_loss, total_correct
 
 
 def main(
@@ -151,6 +180,9 @@ def main(
     add_inverse,
     dataset,
     port,
+    num_workers,
+    prefetch_factor,
+    writer,
     **kwargs,
 ):
     activation_fn = convert_str_to_activation_fn(activation)
@@ -164,6 +196,8 @@ def main(
             batch_size,
             img_size=img_size,
             add_inverse=add_inverse,
+            num_workers=num_workers,
+            prefetch_factor=prefetch_factor,
         )
     )
 
@@ -182,7 +216,9 @@ def main(
     ).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
-    print(f"Experiment activation {activation} loss {loss} bias {bias}")
+    print(
+        f"Experiment activation {activation} loss {loss} bias {bias} add_inverse {add_inverse}"
+    )
 
     for epoch in range(epochs):
         print(f"Epoch {epoch+1}\n-------------------------------")
@@ -191,19 +227,18 @@ def main(
             model,
             loss_fn,
             optimizer,
+            epoch,
             device,
+            writer,
         )
         test_loss, test_acc = test(
             test_dataloader,
             model,
             loss_fn,
+            epoch,
             device,
+            writer,
         )
-
-        # writer.add_scalar("Loss/train", train_loss, epoch)
-        # writer.add_scalar("Loss/test", test_loss, epoch)
-        # writer.add_scalar("Accuracy/train", train_acc, epoch)
-        # writer.add_scalar("Accuracy/test", test_acc, epoch)
 
         if epoch % ckpt_mod == 0 and epoch > 0:
             save_pth(

@@ -26,6 +26,7 @@ def get_training_and_test_data(
     root_path,
     batch_size,
     num_workers=2,
+    prefetch_factor=4,
     **dataset_kwargs,
 ):
 
@@ -48,11 +49,15 @@ def get_training_and_test_data(
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
+        prefetch_factor=prefetch_factor,
+        pin_memory=True,
     )
     test_dataloader = DataLoader(
         test_data,
         batch_size=batch_size,
         num_workers=num_workers,
+        prefetch_factor=prefetch_factor,
+        pin_memory=True,
     )
     return train_dataloader, test_dataloader, input_shape, num_classes
 
@@ -84,7 +89,7 @@ def get_imagenette_dataset(root_path, img_size, **kwargs):
     img_size = 128 if img_size is None else img_size
     label_transform = None
     training_data = get_imagenette_train(root_path, img_size, label_transform)
-    test_data = get_imagenette_test(root_path, label_transform)
+    test_data = get_imagenette_test(root_path, img_size, label_transform)
 
     return training_data, test_data
 
@@ -94,9 +99,9 @@ def get_imagenette_train(root_path, img_size, label_transform=None):
         [
             torchvision.transforms.RandomResizedCrop(img_size),
             torchvision.transforms.RandomHorizontalFlip(),
-            torchvision.transforms.ColorJitter(
-                brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1
-            ),
+            # torchvision.transforms.ColorJitter(
+            #     brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1
+            # ),
             torchvision.transforms.ToTensor(),
         ]
     )

@@ -27,11 +27,12 @@ class LossSwitch(ConvertableEnum):
 class ActivationSwitch(ConvertableEnum):
     RELU = 10
     SOFTPLUS_B1 = 11
-    SOFTPLUS_B10 = 12
-    SOFTPLUS_B100 = 13
-    SOFTPLUS_B1000 = 14
-    SOFTPLUS_B10000 = 15
-    SOFTPLUS_B100000 = 16
+    SOFTPLUS_B5 = 12
+    SOFTPLUS_B10 = 13
+    SOFTPLUS_B100 = 14
+    SOFTPLUS_B1000 = 15
+    SOFTPLUS_B10000 = 16
+    SOFTPLUS_B100000 = 17
     LEAKY_RELU = 21
 
 
@@ -73,9 +74,9 @@ def convert_str_to_activation_fn(activation):
 
 def convert_str_to_loss_fn(loss):
     if LossSwitch.MSE == loss:
-        return nn.MSELoss(reduce="sum")
+        return nn.MSELoss(reduction="sum")
 
     if LossSwitch.CE == loss:
-        return nn.CrossEntropyLoss(reduce="sum")
+        return nn.CrossEntropyLoss(reduction="sum")
 
     raise NameError(loss)

@@ -176,3 +176,4 @@ requirements.txt
 .tmp/*
 logs/*
 src/__pycache__/*
+runs/*

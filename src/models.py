@@ -36,9 +36,10 @@ class SimpleConvNet(nn.Module):
                 bias=conv_bias,
             ),
             self.activation,
+            nn.MaxPool2d(2, 2),
             nn.Conv2d(
                 128,
-                out_channels=256,
+                out_channels=128,
                 kernel_size=3,
                 stride=1,
                 padding=1,
@@ -50,7 +51,7 @@ class SimpleConvNet(nn.Module):
         self.flatten = nn.Flatten()
         self.linear_stack = nn.Sequential(
             nn.Linear(
-                256 * 4 * 4,  # use 7x7 if 28x28 input, 4x4 if 32x32 input
+                128 * 8 * 8,  # use 7x7 if 28x28 input, 4x4 if 32x32 input
                 512,
                 bias=fc_bias,
             ),

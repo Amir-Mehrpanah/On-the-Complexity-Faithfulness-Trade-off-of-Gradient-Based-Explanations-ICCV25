@@ -4,6 +4,9 @@ import os
 import sys
 import debugpy
 
+from datetime import datetime
+from torch.utils.tensorboard import SummaryWriter
+
 # vscode changes the cwd to the file's directory, so we need to add the workspace to the path
 # Set the working directory to the base of the workspace
 workspace_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -23,62 +26,58 @@ def main(args):
         print("Waiting for debugger attach")
         debugpy.wait_for_client()
 
-    # data preparation commands here
     DATA_DIR = datasets.registered_datasets[args["dataset"]].__root_path__
-    if DATA_DIR.endswith(".tgz"):
-        BASE_DIR = os.path.basename(DATA_DIR)[:-4]
-    else:
-        BASE_DIR = os.path.basename(DATA_DIR)
 
+    # If port is 0, we are debugging locally
     if args["port"] == 0:
         # Running locally
         COMPUTE_DATA_DIR = get_local_data_dir(args["dataset"])
     else:
+        # Running on a compute node
         COMPUTE_DATA_DIR = get_remote_data_dir(args["dataset"])
+
+    # If port is None, we are not debugging
+    if args["port"] is None:
+        tb_postfix = args["tb_postfix"]
+        writer = SummaryWriter(
+            log_dir=f"logs/runs/{tb_postfix}",
+        )
+        args["writer"] = writer
+    else:
+        args["writer"] = None
+
+    if DATA_DIR.endswith(".tgz"):
+        EXT = "tgz"
+        BASE_DIR = os.path.basename(DATA_DIR).replace(".tgz", "")
+    else:
+        EXT = "tar"
+        BASE_DIR = os.path.basename(DATA_DIR)
 
     COMPUTE_DATA_DIR_BASE_DIR = os.path.join(COMPUTE_DATA_DIR, BASE_DIR)
     os.makedirs(COMPUTE_DATA_DIR_BASE_DIR, exist_ok=True)
 
     os.system("module load Fpart/1.5.1-gcc-8.5.0")
 
-    result = subprocess.run(
-        [
-            "time",
-            "fpsync",
-            "-n",
-            "8",
-            "-m",
-            "tarify",
-            "-s",
-            "2000M",
-            DATA_DIR,
-            COMPUTE_DATA_DIR,
-        ],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"Failed to sync data: {result.stderr}")
+    move_data_to_compute_node(DATA_DIR, EXT == "tgz", COMPUTE_DATA_DIR)
 
+    TRAGET_DIR = COMPUTE_DATA_DIR_BASE_DIR if EXT == "tar" else COMPUTE_DATA_DIR
+    extract_the_dataset_on_compute_node(COMPUTE_DATA_DIR, EXT, TRAGET_DIR)
+
+    print("Running main job...")
+    print(f"Data is in {COMPUTE_DATA_DIR_BASE_DIR}")
+    training_and_val.main(
+        root_path=COMPUTE_DATA_DIR,
+        **args,
+    )
+
+
+def extract_the_dataset_on_compute_node(
+    COMPUTE_DATA_DIR,
+    EXT,
+    COMPUTE_DATA_DIR_BASE_DIR,
+):
     result = subprocess.run(
-        [
-            "time",
-            "ls",
-            f"{COMPUTE_DATA_DIR}/*.tar",
-            "|",
-            "xargs",
-            "-n",
-            "1",
-            "-P",
-            "8",
-            "-I",
-            "@",
-            "tar",
-            "-xf",
-            "@",
-            "-C",
-            f"{COMPUTE_DATA_DIR_BASE_DIR}",
-        ],
+        f"time ls {COMPUTE_DATA_DIR}*.{EXT} | xargs -n 1 -P 8 -I @ tar -xf @ -C {COMPUTE_DATA_DIR_BASE_DIR}",
         capture_output=True,
         text=True,
         shell=True,
@@ -86,12 +85,44 @@ def main(args):
     if result.returncode != 0:
         raise RuntimeError("Failed to extract data")
 
-    print("Running main job...")
-    print(f"Data is in {COMPUTE_DATA_DIR_BASE_DIR}")
-    # training_and_val.main(
-    #     root_path=COMPUTE_DATA_DIR,
-    #     **args,
-    # )
+
+def move_data_to_compute_node(
+    DATA_DIR,
+    IS_COMPRESSED,
+    COMPUTE_DATA_DIR,
+):
+    if IS_COMPRESSED:
+        result = subprocess.run(
+            [
+                "time",
+                "rsync",
+                "-avh",
+                "--progress",
+                DATA_DIR,
+                COMPUTE_DATA_DIR,
+            ],
+            capture_output=True,
+            text=True,
+        )
+    else:
+        result = subprocess.run(
+            [
+                "time",
+                "fpsync",
+                "-n",
+                "8",
+                "-m",
+                "tarify",
+                "-s",
+                "2000M",
+                DATA_DIR,
+                COMPUTE_DATA_DIR,
+            ],
+            capture_output=True,
+            text=True,
+        )
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to sync data: {result.stderr}")
 
 
 if __name__ == "__main__":
