@@ -36,7 +36,7 @@ def main(args):
         COMPUTE_DATA_DIR = get_remote_data_dir(args["dataset"])
 
     # If port is None, we are not debugging
-    if args["port"] is None:
+    if args["port"] != 0:
         tb_postfix = args["tb_postfix"]
         writer = SummaryWriter(
             log_dir=f"logs/runs/{tb_postfix}",

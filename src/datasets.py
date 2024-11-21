@@ -64,6 +64,8 @@ def get_training_and_test_data(
 
 CIFAR10_MEAN = (0.49139968, 0.48215841, 0.44653091)
 CIFAR10_STD = (0.24703223, 0.24348513, 0.26158784)
+IMAGENETTE_MEAN = (0.485, 0.456, 0.406)
+IMAGENETTE_STD = (0.229, 0.224, 0.225)
 
 
 # see b-cos v2 for this
@@ -85,24 +87,37 @@ class AddInverse(torch.nn.Module):
 
 
 @register_dataset(DatasetSwitch.IMAGENETTE)
-def get_imagenette_dataset(root_path, img_size, **kwargs):
-    img_size = 128 if img_size is None else img_size
+def get_imagenette_dataset(root_path, img_size, add_inverse=False, **kwargs):
+    img_size = 256 if img_size is None else img_size
     label_transform = None
-    training_data = get_imagenette_train(root_path, img_size, label_transform)
-    test_data = get_imagenette_test(root_path, img_size, label_transform)
+    training_data = get_imagenette_train(
+        root_path,
+        img_size,
+        add_inverse,
+        label_transform,
+    )
+    test_data = get_imagenette_test(
+        root_path,
+        img_size,
+        add_inverse,
+        label_transform,
+    )
 
     return training_data, test_data
 
 
-def get_imagenette_train(root_path, img_size, label_transform=None):
+def get_imagenette_train(root_path, img_size, add_inverse, label_transform=None):
     train_transform = torchvision.transforms.Compose(
         [
             torchvision.transforms.RandomResizedCrop(img_size),
             torchvision.transforms.RandomHorizontalFlip(),
-            # torchvision.transforms.ColorJitter(
-            #     brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1
-            # ),
             torchvision.transforms.ToTensor(),
+            (
+                # ablation of Bcos
+                AddInverse()
+                if add_inverse
+                else torchvision.transforms.Normalize(IMAGENETTE_MEAN, IMAGENETTE_STD)
+            ),
         ]
     )
     training_data = datasets.Imagenette(
@@ -110,16 +125,23 @@ def get_imagenette_train(root_path, img_size, label_transform=None):
         split="train",
         transform=train_transform,
         target_transform=label_transform,
+        download=False,
     )
 
     return training_data
 
 
-def get_imagenette_test(root_path, img_size, label_transform=None):
+def get_imagenette_test(root_path, img_size, add_inverse, label_transform=None):
     test_transform = torchvision.transforms.Compose(
         [
             torchvision.transforms.Resize((img_size, img_size)),
             torchvision.transforms.ToTensor(),
+            (
+                # ablation of Bcos
+                AddInverse()
+                if add_inverse
+                else torchvision.transforms.Normalize(IMAGENETTE_MEAN, IMAGENETTE_STD)
+            ),
         ]
     )
     test_data = datasets.Imagenette(
@@ -127,6 +149,7 @@ def get_imagenette_test(root_path, img_size, label_transform=None):
         split="val",
         transform=test_transform,
         target_transform=label_transform,
+        download=False,
     )
 
     return test_data
@@ -142,7 +165,7 @@ def get_cifar10_dataset(root_path, img_size, add_inverse=False):
         img_size,
         add_inverse,
         label_transform,
-    ) 
+    )
     test_data = get_cifar10_test(
         root_path,
         img_size,

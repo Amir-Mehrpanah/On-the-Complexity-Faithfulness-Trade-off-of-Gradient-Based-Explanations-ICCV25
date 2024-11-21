@@ -38,8 +38,6 @@ class ActivationSwitch(ConvertableEnum):
     SOFTPLUS_B10 = 13
     SOFTPLUS_B100 = 14
     SOFTPLUS_B1000 = 15
-    SOFTPLUS_B10000 = 16
-    SOFTPLUS_B100000 = 17
     LEAKY_RELU = 21
 
 
@@ -50,7 +48,7 @@ class DatasetSwitch(ConvertableEnum):
 
 
 def get_save_path(activation, bias, epoch, add_inverse):
-    return f"checkpoints/{activation}_{bias}_{epoch}_{add_inverse}.pth"
+    return f"checkpoints/{activation}_{bias}_{add_inverse}.pth"
 
 
 def save_pth(model, path):
@@ -64,12 +62,12 @@ def save_pth(model, path):
 
 
 def convert_str_to_activation_fn(activation):
-    if ActivationSwitch.RELU == activation:
+    str_activation = str(activation)
+    if "RELU" in str_activation:
         return nn.ReLU()
-    if ActivationSwitch.LEAKY_RELU == activation:
+    if "LEAKY_RELU" in str_activation:
         return nn.LeakyReLU()
 
-    str_activation = str(activation)
     if "SOFTPLUS" in str_activation:
         beta = str_activation.replace("SOFTPLUS_B", "")
         beta = float(beta)

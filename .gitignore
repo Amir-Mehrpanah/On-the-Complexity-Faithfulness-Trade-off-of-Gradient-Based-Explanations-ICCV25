@@ -177,3 +177,4 @@ requirements.txt
 logs/*
 src/__pycache__/*
 runs/*
+logs_old/*

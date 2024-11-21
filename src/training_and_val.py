@@ -2,6 +2,8 @@ import argparse
 import numpy as np
 import torch
 from datetime import datetime
+from torch.utils.tensorboard import SummaryWriter
+import torchvision
 from src.models import get_model
 from src.datasets import get_training_and_test_data
 from src.utils import (
@@ -242,7 +244,7 @@ def main(
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=lr_decay_gamma)
     print(
-        f"Experiment activation {activation} loss {loss} bias {bias} add_inverse {add_inverse}"
+        f"Experiment activation {activation} loss {loss} bias {bias} add_inverse {add_inverse} ({batch_size},{input_shape})"
     )
     old_test_loss = np.inf
     for epoch in range(epochs):
@@ -264,7 +266,6 @@ def main(
             device,
             writer,
         )
-
         if save_ckpt_criteria(ckpt_mod, epoch, test_loss, old_test_loss):
             save_pth(
                 model,
@@ -274,6 +275,15 @@ def main(
                     epoch,
                     add_inverse,
                 ),
+            )
+
+            write_an_example_image(
+                model,
+                train_dataloader,
+                writer,
+                epoch,
+                device,
+                add_inverse,
             )
         scheduler.step()
 
@@ -286,6 +296,51 @@ def main(
         else:
             patience_counter = patience
         old_test_loss = test_loss
+
+
+def write_an_example_image(
+    model,
+    train_dataloader,
+    writer: SummaryWriter,
+    epoch,
+    device,
+    add_inverse,
+):
+    """
+    this function writes an example image to tensorboard for visualization purposes
+    """
+
+    if writer is not None:
+        model.eval()
+
+        for x, y in train_dataloader:
+            x, y = x.to(device), y.to(device)
+            break
+        x = x[[0], ...]
+        x.requires_grad = True
+        pred = model(x)  # get the first image
+        pred = pred.max()
+        pred.backward()
+        grad = torch.norm(x.grad.squeeze(), 2, dim=0).cpu().numpy()
+        grad = (grad - grad.min()) / (grad.max() - grad.min()) * 256
+        writer.add_image(
+            "Grad Image",
+            grad,
+            epoch,
+            dataformats="HW",
+        )
+
+        if add_inverse:
+            x = x[0, :3]
+        else:
+            x = x[0]
+
+        x = (x - x.min()) / (x.max() - x.min()) * 256
+        writer.add_image(
+            "Input Image",
+            x.detach().cpu(),
+            epoch,
+        )
 
 
 def save_ckpt_criteria(ckpt_mod, epoch, test_loss, old_test_loss, warmup_epochs=30):

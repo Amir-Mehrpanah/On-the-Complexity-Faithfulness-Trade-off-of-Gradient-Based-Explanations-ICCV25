@@ -10,9 +10,15 @@ IMAGENET_VAL_ROOT = f"{DATASETS_COMMON}/imagenet/val/"
 
 
 def get_local_data_dir(dataset):
-    return (
-        f"/home/x_amime/x_amime/projects/kernel-view-to-explainability/.tmp/{dataset}/"
-    )
+    '''
+    This function is for visualization or debugging purposes. It returns the local path of the dataset.
+    '''
+    if str(dataset) == "CIFAR10":
+        return f"/home/x_amime/x_amime/projects/kernel-view-to-explainability/.tmp/CIFAR10/"
+    elif str(dataset) == "IMAGENETTE":
+        return f"/proj/azizpour-group/datasets/"
+    else:
+        raise ValueError(f"Unknown dataset {dataset}")
 
 
 def get_remote_data_dir(dataset):
