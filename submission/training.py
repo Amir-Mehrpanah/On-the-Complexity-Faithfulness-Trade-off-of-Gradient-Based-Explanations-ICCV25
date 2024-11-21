@@ -4,7 +4,6 @@ import os
 import sys
 import debugpy
 
-from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 
 # vscode changes the cwd to the file's directory, so we need to add the workspace to the path

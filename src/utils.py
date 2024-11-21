@@ -24,6 +24,13 @@ class LossSwitch(ConvertableEnum):
     CE = 1
 
 
+class ModelSwitch(ConvertableEnum):
+    SIMPLE_CNN = 1001
+    RESNET18 = 1002
+    RESNET34 = 1003
+    RESNET50 = 1004
+
+
 class ActivationSwitch(ConvertableEnum):
     RELU = 10
     SOFTPLUS_B1 = 11

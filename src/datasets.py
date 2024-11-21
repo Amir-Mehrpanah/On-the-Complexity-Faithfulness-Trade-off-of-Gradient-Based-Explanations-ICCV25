@@ -137,16 +137,26 @@ def get_cifar10_dataset(root_path, img_size, add_inverse=False):
     img_size = 32 if img_size is None else img_size
     label_transform = None
 
-    training_data = get_cifar10_train(root_path, img_size, add_inverse, label_transform)
-    test_data = get_cifar10_test(root_path, add_inverse, label_transform)
+    training_data = get_cifar10_train(
+        root_path,
+        img_size,
+        add_inverse,
+        label_transform,
+    ) 
+    test_data = get_cifar10_test(
+        root_path,
+        img_size,
+        add_inverse,
+        label_transform,
+    )
     return training_data, test_data
 
 
 def get_cifar10_train(root_path, img_size, add_inverse=False, label_transform=None):
     train_transform = torchvision.transforms.Compose(
         [
+            torchvision.transforms.Resize((img_size, img_size)),
             torchvision.transforms.RandomHorizontalFlip(),
-            torchvision.transforms.RandomCrop((img_size, img_size), padding=4),
             torchvision.transforms.ToTensor(),
             (
                 AddInverse()
@@ -166,9 +176,10 @@ def get_cifar10_train(root_path, img_size, add_inverse=False, label_transform=No
     return training_data
 
 
-def get_cifar10_test(root_path, add_inverse=False, label_transform=None):
+def get_cifar10_test(root_path, img_size, add_inverse=False, label_transform=None):
     test_transform = torchvision.transforms.Compose(
         [
+            torchvision.transforms.Resize((img_size, img_size)),
             torchvision.transforms.ToTensor(),
             (
                 AddInverse()

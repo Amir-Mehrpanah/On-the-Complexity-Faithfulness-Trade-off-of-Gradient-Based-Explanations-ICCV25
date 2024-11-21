@@ -1,12 +1,14 @@
 import argparse
+import numpy as np
 import torch
 from datetime import datetime
-from src.models import SimpleConvNet
+from src.models import get_model
 from src.datasets import get_training_and_test_data
 from src.utils import (
     ActivationSwitch,
     LossSwitch,
     DatasetSwitch,
+    ModelSwitch,
     convert_str_to_activation_fn,
     convert_str_to_loss_fn,
     save_pth,
@@ -105,6 +107,24 @@ def get_inputs():
         default=datetime.now().strftime("%Y%m%d-%H%M%S"),
         help="postfix for tensorboard logs",
     )
+    parser.add_argument(
+        "--patience",
+        type=int,
+        default=5,
+        help="patience for early stopping",
+    )
+    parser.add_argument(
+        "--model_name",
+        type=ModelSwitch.convert,
+        required=True,
+        help="model name",
+    )
+    parser.add_argument(
+        "--lr_decay_gamma",
+        type=float,
+        default=0.95,
+        help="gamma for lr scheduler",
+    )
 
     args = parser.parse_args()
     args = vars(args)
@@ -170,6 +190,7 @@ def main(
     *,
     root_path,
     activation,
+    model_name,
     loss,
     batch_size,
     img_size,
@@ -182,6 +203,8 @@ def main(
     port,
     num_workers,
     prefetch_factor,
+    patience,
+    lr_decay_gamma,
     writer,
     **kwargs,
 ):
@@ -207,19 +230,21 @@ def main(
     print(f"Using {device} device")
 
     torch.cuda.empty_cache()
-    model = SimpleConvNet(
+    model = get_model(
         input_shape=input_shape,
+        model_name=model_name,
         num_classes=num_classes,
-        activation=activation_fn,
-        conv_bias=bias,
-        fc_bias=True,
-    ).to(device)
+        activation_fn=activation_fn,
+        bias=bias,
+        add_inverse=add_inverse,
+    )
+    model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=lr_decay_gamma)
     print(
         f"Experiment activation {activation} loss {loss} bias {bias} add_inverse {add_inverse}"
     )
-
+    old_test_loss = np.inf
     for epoch in range(epochs):
         print(f"Epoch {epoch+1}\n-------------------------------")
         train_loss, train_acc = train(
@@ -240,7 +265,7 @@ def main(
             writer,
         )
 
-        if epoch % ckpt_mod == 0 and epoch > 0:
+        if save_ckpt_criteria(ckpt_mod, epoch, test_loss, old_test_loss):
             save_pth(
                 model,
                 path=get_save_path(
@@ -251,6 +276,24 @@ def main(
                 ),
             )
         scheduler.step()
+
+        # early stopping
+        if test_loss > old_test_loss:
+            patience_counter -= 1
+            if patience_counter == 0:
+                print("Early stopping")
+                break
+        else:
+            patience_counter = patience
+        old_test_loss = test_loss
+
+
+def save_ckpt_criteria(ckpt_mod, epoch, test_loss, old_test_loss, warmup_epochs=30):
+    return (
+        (epoch % ckpt_mod == 0)
+        and (epoch > warmup_epochs)
+        and (test_loss < old_test_loss)
+    )
 
 
 if __name__ == "__main__":
