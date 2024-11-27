@@ -1,7 +1,6 @@
 from typing import Any, Callable, List, Optional, Type, Union
 from torch import nn
 import torch
-from torchvision.models._api import WeightsEnum
 
 from src.utils import ModelSwitch
 
@@ -35,7 +34,7 @@ class SimpleConvNet(nn.Module):
             nn.Conv2d(
                 64,
                 out_channels=128,
-                kernel_size=3,
+                kernel_size=1,
                 stride=1,
                 padding=1,
                 bias=conv_bias,
@@ -46,6 +45,16 @@ class SimpleConvNet(nn.Module):
                 128,
                 out_channels=128,
                 kernel_size=3,
+                stride=1,
+                padding=1,
+                bias=conv_bias,
+            ),
+            self.activation,
+            nn.MaxPool2d(2, 2),
+            nn.Conv2d(
+                128,
+                out_channels=128,
+                kernel_size=1,
                 stride=1,
                 padding=1,
                 bias=conv_bias,
@@ -453,7 +462,6 @@ def get_model(
     num_classes,
     activation_fn,
     bias,
-    add_inverse,
     **kwargs,
 ):
     if ModelSwitch.SIMPLE_CNN == model_name:
@@ -474,7 +482,6 @@ def get_model(
             input_shape=input_shape,
             conv_bias=bias,
             fc_bias=True,
-            **kwargs,
         )
 
     if ModelSwitch.RESNET34 == model_name:
@@ -486,7 +493,6 @@ def get_model(
             input_shape=input_shape,
             conv_bias=bias,
             fc_bias=True,
-            **kwargs,
         )
 
     if ModelSwitch.RESNET50 == model_name:
@@ -498,7 +504,6 @@ def get_model(
             input_shape=input_shape,
             conv_bias=bias,
             fc_bias=True,
-            **kwargs,
         )
 
     raise NameError(model_name)

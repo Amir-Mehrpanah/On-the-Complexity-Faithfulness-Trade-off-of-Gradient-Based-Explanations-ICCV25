@@ -32,13 +32,15 @@ class ModelSwitch(ConvertableEnum):
 
 
 class ActivationSwitch(ConvertableEnum):
-    RELU = 10
-    SOFTPLUS_B1 = 11
-    SOFTPLUS_B5 = 12
-    SOFTPLUS_B10 = 13
-    SOFTPLUS_B100 = 14
-    SOFTPLUS_B1000 = 15
+    SOFTPLUS_B_01 = 11
+    SOFTPLUS_B_1 = 12
+    SOFTPLUS_B_2 = 13
+    SOFTPLUS_B100 = 17
+    SOFTPLUS_B10 = 16
+    SOFTPLUS_B5 = 15
+    SOFTPLUS_B1 = 14
     LEAKY_RELU = 21
+    RELU = 10
 
 
 class DatasetSwitch(ConvertableEnum):
@@ -47,8 +49,18 @@ class DatasetSwitch(ConvertableEnum):
     IMAGENETTE = 202
 
 
-def get_save_path(activation, bias, epoch, add_inverse):
-    return f"checkpoints/{activation}_{bias}_{add_inverse}.pth"
+def get_save_path(
+    model_name,
+    activation,
+    augmentation,
+    bias,
+    epoch,
+    add_inverse,
+):
+    augmentation = "aug" if augmentation else "noaug"
+    add_inverse = "inv" if add_inverse else "noinv"
+    bias = "bias" if bias else "nobias"
+    return f"checkpoints/{model_name}_{activation}_{augmentation}.pth"
 
 
 def save_pth(model, path):
@@ -63,13 +75,14 @@ def save_pth(model, path):
 
 def convert_str_to_activation_fn(activation):
     str_activation = str(activation)
-    if "RELU" in str_activation:
-        return nn.ReLU()
     if "LEAKY_RELU" in str_activation:
         return nn.LeakyReLU()
+    if "RELU" in str_activation:
+        return nn.ReLU()
 
     if "SOFTPLUS" in str_activation:
         beta = str_activation.replace("SOFTPLUS_B", "")
+        beta = beta.replace("_", ".")
         beta = float(beta)
 
         return nn.Softplus(beta)

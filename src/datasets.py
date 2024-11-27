@@ -87,12 +87,19 @@ class AddInverse(torch.nn.Module):
 
 
 @register_dataset(DatasetSwitch.IMAGENETTE)
-def get_imagenette_dataset(root_path, img_size, add_inverse=False, **kwargs):
-    img_size = 256 if img_size is None else img_size
+def get_imagenette_dataset(
+    root_path,
+    img_size,
+    augmentation,
+    add_inverse=False,
+    **kwargs,
+):
+    img_size = 224 if img_size is None else img_size
     label_transform = None
     training_data = get_imagenette_train(
         root_path,
         img_size,
+        augmentation,
         add_inverse,
         label_transform,
     )
@@ -106,12 +113,31 @@ def get_imagenette_dataset(root_path, img_size, add_inverse=False, **kwargs):
     return training_data, test_data
 
 
-def get_imagenette_train(root_path, img_size, add_inverse, label_transform=None):
+def get_imagenette_train(
+    root_path, img_size, augmentation, add_inverse, label_transform=None
+):
+    augmentations = torchvision.transforms.RandomChoice(
+        [
+            torchvision.transforms.RandomHorizontalFlip(),
+            torchvision.transforms.RandomVerticalFlip(),
+            torchvision.transforms.ColorJitter(
+                brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1
+            ),
+            torchvision.transforms.RandomRotation(10),
+            torchvision.transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+            torchvision.transforms.RandomPerspective(distortion_scale=0.1),
+            torchvision.transforms.RandomErasing(p=0.25, value="random"),
+            torchvision.transforms.RandomGrayscale(p=0.1),
+        ]
+    )
     train_transform = torchvision.transforms.Compose(
         [
-            torchvision.transforms.RandomResizedCrop(img_size),
-            torchvision.transforms.RandomHorizontalFlip(),
             torchvision.transforms.ToTensor(),
+            *(
+                (torchvision.transforms.RandomResizedCrop(img_size), augmentations)
+                if augmentation
+                else (torchvision.transforms.CenterCrop(img_size),)
+            ),
             (
                 # ablation of Bcos
                 AddInverse()
@@ -131,19 +157,28 @@ def get_imagenette_train(root_path, img_size, add_inverse, label_transform=None)
     return training_data
 
 
-def get_imagenette_test(root_path, img_size, add_inverse, label_transform=None):
-    test_transform = torchvision.transforms.Compose(
-        [
-            torchvision.transforms.Resize((img_size, img_size)),
-            torchvision.transforms.ToTensor(),
-            (
-                # ablation of Bcos
-                AddInverse()
-                if add_inverse
-                else torchvision.transforms.Normalize(IMAGENETTE_MEAN, IMAGENETTE_STD)
-            ),
-        ]
-    )
+def get_imagenette_test(
+    root_path,
+    img_size,
+    add_inverse,
+    test_transform=None,
+    label_transform=None,
+):
+    if test_transform is None:
+        test_transform = torchvision.transforms.Compose(
+            [
+                torchvision.transforms.ToTensor(),
+                torchvision.transforms.Resize((img_size, img_size)),
+                (
+                    # ablation of Bcos
+                    AddInverse()
+                    if add_inverse
+                    else torchvision.transforms.Normalize(
+                        IMAGENETTE_MEAN, IMAGENETTE_STD
+                    )
+                ),
+            ]
+        )
     test_data = datasets.Imagenette(
         root=root_path,
         split="val",

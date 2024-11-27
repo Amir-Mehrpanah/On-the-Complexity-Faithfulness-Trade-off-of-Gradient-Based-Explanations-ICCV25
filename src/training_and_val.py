@@ -87,6 +87,11 @@ def get_inputs():
         help="checkpoint if epoch % ckpt_mod == 0",
     )
     parser.add_argument(
+        "--augmentation",
+        action="store_true",
+        help="use data augmentation",
+    )
+    parser.add_argument(
         "--add_inverse",
         action="store_true",
         help="add the inverse of the input image to the input",
@@ -200,6 +205,7 @@ def main(
     lr,
     bias,
     ckpt_mod,
+    augmentation,
     add_inverse,
     dataset,
     port,
@@ -220,6 +226,7 @@ def main(
             root_path,
             batch_size,
             img_size=img_size,
+            augmentation=augmentation,
             add_inverse=add_inverse,
             num_workers=num_workers,
             prefetch_factor=prefetch_factor,
@@ -244,7 +251,9 @@ def main(
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=lr_decay_gamma)
     print(
-        f"Experiment activation {activation} loss {loss} bias {bias} add_inverse {add_inverse} ({batch_size},{input_shape})"
+        f"Experimen model_name {model_name} activation {activation}"
+        f" loss {loss} bias {bias} add_inverse {add_inverse} "
+        f"({batch_size},{input_shape}) augmentation {augmentation}"
     )
     old_test_loss = np.inf
     for epoch in range(epochs):
@@ -270,25 +279,19 @@ def main(
             save_pth(
                 model,
                 path=get_save_path(
+                    model_name,
                     activation,
+                    augmentation,
                     bias,
                     epoch,
                     add_inverse,
                 ),
             )
 
-            write_an_example_image(
-                model,
-                train_dataloader,
-                writer,
-                epoch,
-                device,
-                add_inverse,
-            )
         scheduler.step()
 
         # early stopping
-        if test_loss > old_test_loss:
+        if test_loss > old_test_loss + 1e-4:
             patience_counter -= 1
             if patience_counter == 0:
                 print("Early stopping")
@@ -296,51 +299,6 @@ def main(
         else:
             patience_counter = patience
         old_test_loss = test_loss
-
-
-def write_an_example_image(
-    model,
-    train_dataloader,
-    writer: SummaryWriter,
-    epoch,
-    device,
-    add_inverse,
-):
-    """
-    this function writes an example image to tensorboard for visualization purposes
-    """
-
-    if writer is not None:
-        model.eval()
-
-        for x, y in train_dataloader:
-            x, y = x.to(device), y.to(device)
-            break
-        x = x[[0], ...]
-        x.requires_grad = True
-        pred = model(x)  # get the first image
-        pred = pred.max()
-        pred.backward()
-        grad = torch.norm(x.grad.squeeze(), 2, dim=0).cpu().numpy()
-        grad = (grad - grad.min()) / (grad.max() - grad.min()) * 256
-        writer.add_image(
-            "Grad Image",
-            grad,
-            epoch,
-            dataformats="HW",
-        )
-
-        if add_inverse:
-            x = x[0, :3]
-        else:
-            x = x[0]
-
-        x = (x - x.min()) / (x.max() - x.min()) * 256
-        writer.add_image(
-            "Input Image",
-            x.detach().cpu(),
-            epoch,
-        )
 
 
 def save_ckpt_criteria(ckpt_mod, epoch, test_loss, old_test_loss, warmup_epochs=30):
