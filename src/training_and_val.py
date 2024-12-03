@@ -155,11 +155,11 @@ def train(dataloader, model, loss_fn, optimizer, epoch, device, writer):
 
         correct = (pred.argmax(1) == y).type(torch.float).sum().item()
         total_correct += correct
-        if writer is not None:
-            writer.add_scalar("Loss/train", loss.item(), step + size * epoch)
-            writer.add_scalar(
-                "Accuracy/train", correct / x.size(0), step + size * epoch
-            )
+        # if writer is not None:
+        #     writer.add_scalar("Loss/train", loss.item(), step + size * epoch)
+        #     writer.add_scalar(
+        #         "Accuracy/train", correct / x.size(0), step + size * epoch
+        #     )
 
     total_loss = total_loss / size
     total_correct = total_correct / size
@@ -255,7 +255,7 @@ def main(
         f" loss {loss} bias {bias} add_inverse {add_inverse} "
         f"({batch_size},{input_shape}) augmentation {augmentation}"
     )
-    old_test_loss = np.inf
+    old_test_acc = 0
     for epoch in range(epochs):
         print(f"Epoch {epoch+1}\n-------------------------------")
         train_loss, train_acc = train(
@@ -275,7 +275,7 @@ def main(
             device,
             writer,
         )
-        if save_ckpt_criteria(ckpt_mod, epoch, test_loss, old_test_loss):
+        if save_ckpt_criteria(ckpt_mod, epoch, test_acc, old_test_acc):
             save_pth(
                 model,
                 path=get_save_path(
@@ -291,21 +291,21 @@ def main(
         scheduler.step()
 
         # early stopping
-        if test_loss > old_test_loss + 1e-4:
+        if test_acc < old_test_acc + 1e-3:
             patience_counter -= 1
             if patience_counter == 0:
                 print("Early stopping")
                 break
         else:
             patience_counter = patience
-        old_test_loss = test_loss
+        old_test_acc = test_acc
 
 
-def save_ckpt_criteria(ckpt_mod, epoch, test_loss, old_test_loss, warmup_epochs=30):
+def save_ckpt_criteria(ckpt_mod, epoch, test_acc, old_test_acc, warmup_epochs=30):
     return (
         (epoch % ckpt_mod == 0)
         and (epoch > warmup_epochs)
-        and (test_loss < old_test_loss)
+        and (test_acc > old_test_acc)
     )
 
 

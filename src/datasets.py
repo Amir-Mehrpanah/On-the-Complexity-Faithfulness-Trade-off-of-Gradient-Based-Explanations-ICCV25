@@ -11,6 +11,23 @@ from src import paths
 registered_datasets = {}
 
 
+class GaussianISONoise(torch.nn.Module):
+    """Add Gaussian noise to an image with a given standard deviation.
+    Args:
+        std (float): standard deviation of the Gaussian noise
+    """
+
+    def __init__(self, std: float):
+        super().__init__()
+        self.std = std
+
+    def forward(self, in_tensor: torch.Tensor) -> torch.Tensor:
+        return in_tensor + torch.randn_like(in_tensor) * self.std
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(sigma={self.p})"
+
+
 def register_dataset(name):
     def decorator(func):
         str_name = str(name)
@@ -24,7 +41,7 @@ def register_dataset(name):
 
 
 def resolve_data_directories(args):
-    DATA_DIR = datasets.registered_datasets[args["dataset"]].__root_path__
+    DATA_DIR = registered_datasets[args["dataset"]].__root_path__
 
     # If port is 0, we are debugging locally
     if args["port"] == 0:
@@ -125,16 +142,17 @@ def get_training_and_test_dataloader(
     assert input_shape == test_data[0][0].shape
 
     # DATA LOADER
-    if get_only_test:
-        test_dataloader = DataLoader(
+    test_dataloader = DataLoader(
         test_data,
         batch_size=batch_size,
         num_workers=num_workers,
         prefetch_factor=prefetch_factor,
         pin_memory=True,
-        )
+    )
+
+    if get_only_test:
         return test_dataloader, input_shape, num_classes
-    
+
     train_dataloader = DataLoader(
         training_data,
         batch_size=batch_size,
@@ -143,7 +161,7 @@ def get_training_and_test_dataloader(
         prefetch_factor=prefetch_factor,
         pin_memory=True,
     )
-    
+
     return train_dataloader, test_dataloader, input_shape, num_classes
 
 
@@ -219,7 +237,11 @@ def get_imagenette_train(
         [
             torchvision.transforms.ToTensor(),
             *(
-                (torchvision.transforms.RandomResizedCrop(img_size), augmentations)
+                (
+                    torchvision.transforms.RandomResizedCrop(img_size),
+                    augmentations,
+                    GaussianISONoise(0.05),
+                )
                 if augmentation
                 else (torchvision.transforms.CenterCrop(img_size),)
             ),
