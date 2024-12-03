@@ -5,7 +5,7 @@ from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 import torchvision
 from src.models import get_model
-from src.datasets import get_training_and_test_data
+from src.datasets import get_training_and_test_dataloader
 from src.utils import (
     ActivationSwitch,
     LossSwitch,
@@ -221,7 +221,7 @@ def main(
 
     # DATASET AND DATALOADERS
     train_dataloader, test_dataloader, input_shape, num_classes = (
-        get_training_and_test_data(
+        get_training_and_test_dataloader(
             dataset,
             root_path,
             batch_size,

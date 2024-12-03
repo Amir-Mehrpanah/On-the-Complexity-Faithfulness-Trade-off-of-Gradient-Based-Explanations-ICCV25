@@ -1,7 +1,9 @@
+import os
 import torchvision.datasets as datasets
 from torch.utils.data import DataLoader
 import torchvision
 import torch
+import subprocess
 
 from src.utils import DatasetSwitch
 from src import paths
@@ -21,12 +23,91 @@ def register_dataset(name):
     return decorator
 
 
-def get_training_and_test_data(
+def resolve_data_directories(args):
+    DATA_DIR = datasets.registered_datasets[args["dataset"]].__root_path__
+
+    # If port is 0, we are debugging locally
+    if args["port"] == 0:
+        # Running locally
+        COMPUTE_DATA_DIR = paths.get_local_data_dir(args["dataset"])
+    else:
+        # Running on a compute node
+        COMPUTE_DATA_DIR = paths.get_remote_data_dir(args["dataset"])
+
+    if DATA_DIR.endswith(".tgz"):
+        EXT = "tgz"
+        BASE_DIR = os.path.basename(DATA_DIR).replace(".tgz", "")
+    else:
+        EXT = "tar"
+        BASE_DIR = os.path.basename(DATA_DIR)
+
+    COMPUTE_DATA_DIR_BASE_DIR = os.path.join(COMPUTE_DATA_DIR, BASE_DIR)
+    os.makedirs(COMPUTE_DATA_DIR_BASE_DIR, exist_ok=True)
+    TARGET_DIR = COMPUTE_DATA_DIR_BASE_DIR if EXT == "tar" else COMPUTE_DATA_DIR
+    return DATA_DIR, COMPUTE_DATA_DIR, EXT, COMPUTE_DATA_DIR_BASE_DIR, TARGET_DIR
+
+
+def extract_the_dataset_on_compute_node(
+    COMPUTE_DATA_DIR,
+    EXT,
+    COMPUTE_DATA_DIR_BASE_DIR,
+):
+    result = subprocess.run(
+        f"time ls {COMPUTE_DATA_DIR}*.{EXT} | xargs -n 1 -P 8 -I @ tar -xf @ -C {COMPUTE_DATA_DIR_BASE_DIR}",
+        capture_output=True,
+        text=True,
+        shell=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError("Failed to extract data")
+
+
+def move_data_to_compute_node(
+    DATA_DIR,
+    IS_COMPRESSED,
+    COMPUTE_DATA_DIR,
+):
+    if IS_COMPRESSED:
+        result = subprocess.run(
+            [
+                "time",
+                "rsync",
+                "-avh",
+                "--progress",
+                DATA_DIR,
+                COMPUTE_DATA_DIR,
+            ],
+            capture_output=True,
+            text=True,
+        )
+    else:
+        result = subprocess.run(
+            [
+                "time",
+                "fpsync",
+                "-n",
+                "8",
+                "-m",
+                "tarify",
+                "-s",
+                "2000M",
+                DATA_DIR,
+                COMPUTE_DATA_DIR,
+            ],
+            capture_output=True,
+            text=True,
+        )
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to sync data: {result.stderr}")
+
+
+def get_training_and_test_dataloader(
     dataset,
     root_path,
     batch_size,
     num_workers=2,
     prefetch_factor=4,
+    get_only_test=False,
     **dataset_kwargs,
 ):
 
@@ -44,6 +125,16 @@ def get_training_and_test_data(
     assert input_shape == test_data[0][0].shape
 
     # DATA LOADER
+    if get_only_test:
+        test_dataloader = DataLoader(
+        test_data,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        prefetch_factor=prefetch_factor,
+        pin_memory=True,
+        )
+        return test_dataloader, input_shape, num_classes
+    
     train_dataloader = DataLoader(
         training_data,
         batch_size=batch_size,
@@ -52,13 +143,7 @@ def get_training_and_test_data(
         prefetch_factor=prefetch_factor,
         pin_memory=True,
     )
-    test_dataloader = DataLoader(
-        test_data,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        prefetch_factor=prefetch_factor,
-        pin_memory=True,
-    )
+    
     return train_dataloader, test_dataloader, input_shape, num_classes
 
 

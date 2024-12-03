@@ -23,3 +23,4 @@ def get_local_data_dir(dataset):
 
 def get_remote_data_dir(dataset):
     return f"/scratch/local/{dataset}/"
+
