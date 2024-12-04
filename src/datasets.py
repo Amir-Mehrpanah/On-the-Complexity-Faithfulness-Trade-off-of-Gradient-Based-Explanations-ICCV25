@@ -118,6 +118,26 @@ def move_data_to_compute_node(
         raise RuntimeError(f"Failed to sync data: {result.stderr}")
 
 
+class RepeatedBatchSampler(torch.utils.data.Sampler):
+    """Wraps another sampler to yield a minibatch of indices multiple times.
+    Args:
+        sampler (Sampler): Base sampler.
+        num_repeats (int): Number of times to repeat the indices.
+    """
+
+    def __init__(self, sampler: torch.utils.data.Sampler, num_repeats: int):
+        self.sampler = sampler
+        self.num_repeats = num_repeats
+
+    def __iter__(self):
+        for s in self.sampler:
+            for _ in range(self.num_repeats):
+                yield s
+
+    def __len__(self):
+        return len(self.sampler) * self.num_repeats
+
+
 def get_training_and_test_dataloader(
     dataset,
     root_path,
@@ -125,6 +145,8 @@ def get_training_and_test_dataloader(
     num_workers=2,
     prefetch_factor=4,
     get_only_test=False,
+    shuffle=True,
+    sampler=None,
     **dataset_kwargs,
 ):
 
@@ -141,6 +163,9 @@ def get_training_and_test_dataloader(
     input_shape = training_data[0][0].shape
     assert input_shape == test_data[0][0].shape
 
+    test_sampler = None if sampler is None else sampler(test_data)
+    train_sampler = None if sampler is None else sampler(training_data)
+
     # DATA LOADER
     test_dataloader = DataLoader(
         test_data,
@@ -148,6 +173,7 @@ def get_training_and_test_dataloader(
         num_workers=num_workers,
         prefetch_factor=prefetch_factor,
         pin_memory=True,
+        sampler=None if test_sampler is None else test_sampler,
     )
 
     if get_only_test:
@@ -156,10 +182,11 @@ def get_training_and_test_dataloader(
     train_dataloader = DataLoader(
         training_data,
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=shuffle,
         num_workers=num_workers,
         prefetch_factor=prefetch_factor,
         pin_memory=True,
+        sampler=None if train_sampler is None else train_sampler,
     )
 
     return train_dataloader, test_dataloader, input_shape, num_classes

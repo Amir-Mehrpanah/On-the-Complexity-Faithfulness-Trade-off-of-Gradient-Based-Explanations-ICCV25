@@ -5,6 +5,13 @@ import torch
 from torch import nn
 
 
+def determine_device(args):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cpu" if args["port"] == 0 else device
+    args["device"] = device
+    print(f"Using {device} device")
+
+
 class ConvertableEnum(Enum):
     @classmethod
     def convert(cls, value):

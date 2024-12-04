@@ -2,7 +2,8 @@ import os
 import sys
 import debugpy
 import submitit
-from torch.utils.tensorboard import SummaryWriter
+
+from utils import determine_device
 
 # vscode changes the cwd to the file's directory, so we need to add the workspace to the path
 # Set the working directory to the base of the workspace
@@ -24,6 +25,8 @@ def main(args):
         print("Waiting for debugger attach")
         debugpy.wait_for_client()
 
+    determine_device(args)
+
     DATA_DIR, COMPUTE_DATA_DIR, EXT, COMPUTE_DATA_DIR_BASE_DIR,TARGET_DIR = resolve_data_directories(args)
 
     os.system("module load Fpart/1.5.1-gcc-8.5.0")
@@ -42,6 +45,7 @@ def main(args):
 if __name__ == "__main__":
     args = curvature_summary.get_inputs()
     assert "dataset" in args, "Please provide a dataset"
+    assert "block_main" in args, "Please provide block_main"
     assert args["dataset"] in datasets.registered_datasets, "Dataset not found"
     assert "port" in args, "Please provide a port"
 

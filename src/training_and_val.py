@@ -1,9 +1,7 @@
 import argparse
-import numpy as np
 import torch
 from datetime import datetime
-from torch.utils.tensorboard import SummaryWriter
-import torchvision
+
 from src.models import get_model
 from src.datasets import get_training_and_test_dataloader
 from src.utils import (
@@ -214,6 +212,7 @@ def main(
     patience,
     lr_decay_gamma,
     writer,
+    device,
     **kwargs,
 ):
     activation_fn = convert_str_to_activation_fn(activation)
@@ -234,10 +233,6 @@ def main(
     )
 
     # MODEL
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    device = "cpu" if port == 0 else device
-    print(f"Using {device} device")
-
     torch.cuda.empty_cache()
     model = get_model(
         input_shape=input_shape,
