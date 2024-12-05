@@ -7,6 +7,7 @@ from src.datasets import RepeatedBatchSampler, get_training_and_test_dataloader
 from src.models import get_model
 from src.utils import (
     ActivationSwitch,
+    AugmentationSwitch,
     DatasetSwitch,
     LossSwitch,
     convert_str_to_activation_fn,
@@ -54,7 +55,8 @@ def get_inputs():
     )
     parser.add_argument(
         "--augmentation",
-        action="store_true",
+        type=AugmentationSwitch.convert,
+        required=True,
         help="use data augmentation",
     )
     parser.set_defaults(bias=True)
@@ -97,6 +99,12 @@ def get_inputs():
         type=int,
         default=-1,
         help="maximum number of batches to process",
+    )
+    parser.add_argument(
+        "--num_batches",
+        type=int,
+        default=1,
+        help="number of batches to to sample",
     )
     parser.add_argument(
         "--epoch",
@@ -174,13 +182,14 @@ def main(
     epoch,
     eval_only_on_test,
     max_batches,
+    num_batches,
     device,
     **args,
 ):
     activation_fn = convert_str_to_activation_fn(activation)
     sampler = (
         lambda datasource: RepeatedBatchSampler(
-            datasource=datasource, num_repeats=batch_size
+            datasource=datasource, num_repeats=batch_size * num_batches
         ),
     )
     aux = get_training_and_test_dataloader(

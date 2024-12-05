@@ -56,6 +56,12 @@ class DatasetSwitch(ConvertableEnum):
     IMAGENETTE = 202
 
 
+class AugmentationSwitch(ConvertableEnum):
+    EXP_VIS = 1  # used in exaplanation methods for visualizing the original image
+    EXP_GEN = 2  # used in exaplanation methods for generating the heatmaps
+    TRAIN = 3  # used in training for training set
+
+
 def get_save_path(
     model_name,
     activation,

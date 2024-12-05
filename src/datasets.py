@@ -5,7 +5,7 @@ import torchvision
 import torch
 import subprocess
 
-from src.utils import DatasetSwitch
+from src.utils import AugmentationSwitch, DatasetSwitch
 from src import paths
 
 registered_datasets = {}
@@ -244,40 +244,29 @@ def get_imagenette_dataset(
 
 
 def get_imagenette_train(
-    root_path, img_size, augmentation, add_inverse, label_transform=None
+    root_path,
+    img_size,
+    augmentation,
+    add_inverse,
+    label_transform=None,
+    gaussian_noise_var=0.05,
 ):
-    augmentations = torchvision.transforms.RandomChoice(
-        [
-            torchvision.transforms.RandomHorizontalFlip(),
-            torchvision.transforms.RandomVerticalFlip(),
-            torchvision.transforms.ColorJitter(
-                brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1
-            ),
-            torchvision.transforms.RandomRotation(10),
-            torchvision.transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
-            torchvision.transforms.RandomPerspective(distortion_scale=0.1),
-            torchvision.transforms.RandomErasing(p=0.25, value="random"),
-            torchvision.transforms.RandomGrayscale(p=0.1),
-        ]
+    assert isinstance(
+        augmentation, AugmentationSwitch
+    ), f"Augmentation must be an enum of type AugmentationSwitch"
+
+    augmentations = get_aug(
+        img_size,
+        augmentation,
+        add_inverse,
+        gaussian_noise_var,
+        "train",
     )
+
     train_transform = torchvision.transforms.Compose(
         [
             torchvision.transforms.ToTensor(),
-            *(
-                (
-                    torchvision.transforms.RandomResizedCrop(img_size),
-                    augmentations,
-                    GaussianISONoise(0.05),
-                )
-                if augmentation
-                else (torchvision.transforms.CenterCrop(img_size),)
-            ),
-            (
-                # ablation of Bcos
-                AddInverse()
-                if add_inverse
-                else torchvision.transforms.Normalize(IMAGENETTE_MEAN, IMAGENETTE_STD)
-            ),
+            *augmentations,
         ]
     )
     training_data = datasets.Imagenette(
@@ -291,17 +280,31 @@ def get_imagenette_train(
     return training_data
 
 
-def get_imagenette_test(
-    root_path,
-    img_size,
-    add_inverse,
-    test_transform=None,
-    label_transform=None,
-):
-    if test_transform is None:
-        test_transform = torchvision.transforms.Compose(
-            [
-                torchvision.transforms.ToTensor(),
+def get_aug(img_size, augmentation, add_inverse, gaussian_noise_var, split):
+    if augmentation == AugmentationSwitch.TRAIN:
+        if split == "train":
+            augmentations = (
+                torchvision.transforms.RandomResizedCrop(img_size),
+                torchvision.transforms.RandomChoice(
+                    [
+                        torchvision.transforms.RandomHorizontalFlip(),
+                        torchvision.transforms.RandomVerticalFlip(),
+                        torchvision.transforms.ColorJitter(
+                            brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1
+                        ),
+                        torchvision.transforms.RandomRotation(10),
+                        torchvision.transforms.RandomAffine(
+                            degrees=0, translate=(0.1, 0.1)
+                        ),
+                        torchvision.transforms.RandomPerspective(distortion_scale=0.1),
+                        torchvision.transforms.RandomErasing(p=0.25, value="random"),
+                        torchvision.transforms.RandomGrayscale(p=0.1),
+                    ]
+                ),
+                GaussianISONoise(gaussian_noise_var),
+            )
+        elif split == "test":
+            augmentations = (
                 torchvision.transforms.Resize((img_size, img_size)),
                 (
                     # ablation of Bcos
@@ -311,8 +314,54 @@ def get_imagenette_test(
                         IMAGENETTE_MEAN, IMAGENETTE_STD
                     )
                 ),
-            ]
+            )
+        else:
+            raise ValueError(f"Split {split} not recognized")
+
+    elif augmentation == AugmentationSwitch.EXP_GEN:
+        augmentations = (
+            torchvision.transforms.Resize((img_size, img_size)),
+            (
+                # ablation of Bcos
+                AddInverse()
+                if add_inverse
+                else torchvision.transforms.Normalize(IMAGENETTE_MEAN, IMAGENETTE_STD)
+            ),
+            GaussianISONoise(gaussian_noise_var),
         )
+    if augmentation == AugmentationSwitch.EXP_VIS:
+        augmentations = (torchvision.transforms.Resize((img_size, img_size)),)
+
+    return augmentations
+
+
+def get_imagenette_test(
+    root_path,
+    img_size,
+    add_inverse,
+    augmentation=AugmentationSwitch.TRAIN,
+    gaussian_noise_var=0.05,
+    label_transform=None,
+):
+    assert isinstance(
+        augmentation, AugmentationSwitch
+    ), f"Augmentation must be an enum of type AugmentationSwitch"
+
+    augmentations = get_aug(
+        img_size,
+        augmentation,
+        add_inverse,
+        gaussian_noise_var,
+        "test",
+    )
+
+    test_transform = torchvision.transforms.Compose(
+        [
+            torchvision.transforms.ToTensor(),
+            *augmentations,
+        ]
+    )
+
     test_data = datasets.Imagenette(
         root=root_path,
         split="val",

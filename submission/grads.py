@@ -12,9 +12,12 @@ os.chdir(workspace_dir)
 sys.path.insert(0, workspace_dir)
 
 from src import datasets
-from src.datasets import extract_the_dataset_on_compute_node, move_data_to_compute_node, resolve_data_directories
-from src import curvature_summary
-
+from src.datasets import (
+    extract_the_dataset_on_compute_node,
+    move_data_to_compute_node,
+    resolve_data_directories,
+)
+from src import compute_grad
 
 
 def main(args):
@@ -27,7 +30,9 @@ def main(args):
 
     determine_device(args)
 
-    DATA_DIR, COMPUTE_DATA_DIR, EXT, COMPUTE_DATA_DIR_BASE_DIR,TARGET_DIR = resolve_data_directories(args)
+    DATA_DIR, COMPUTE_DATA_DIR, EXT, COMPUTE_DATA_DIR_BASE_DIR, TARGET_DIR = (
+        resolve_data_directories(args)
+    )
 
     os.system("module load Fpart/1.5.1-gcc-8.5.0")
 
@@ -37,13 +42,14 @@ def main(args):
 
     print("Running main job...")
     print(f"Data is in {COMPUTE_DATA_DIR_BASE_DIR}")
-    curvature_summary.main(
+    compute_grad.main(
         root_path=COMPUTE_DATA_DIR,
         **args,
     )
 
+
 if __name__ == "__main__":
-    args = curvature_summary.get_inputs()
+    args = compute_grad.get_inputs()
     assert "dataset" in args, "Please provide a dataset"
     assert "block_main" in args, "Please provide block_main"
     assert args["dataset"] in datasets.registered_datasets, "Dataset not found"
