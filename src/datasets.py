@@ -40,6 +40,28 @@ def register_dataset(name):
     return decorator
 
 
+def move_output_compute_node(COMPUTE_OUTPUT_DIR, LOCAL_OUTPUT_DIR):
+
+    result = subprocess.run(
+        [
+            "time",
+            "fpsync",
+            "-n",
+            "8",
+            "-m",
+            "tarify",
+            "-s",
+            "2000M",
+            COMPUTE_OUTPUT_DIR,
+            LOCAL_OUTPUT_DIR,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to sync output: {result.stderr}")
+
+
 def resolve_data_directories(args):
     DATA_DIR = registered_datasets[args["dataset"]].__root_path__
 
@@ -52,6 +74,8 @@ def resolve_data_directories(args):
         # Running on a compute node
         COMPUTE_DATA_DIR = paths.get_remote_data_dir(args["dataset"])
         COMPUTE_OUTPUT_DIR = paths.COMPUTE_OUTPUT_DIR
+
+    LOCAL_OUTPUT_DIR = paths.LOCAL_OUTPUT_DIR
 
     if DATA_DIR.endswith(".tgz"):
         EXT = "tgz"
@@ -72,6 +96,7 @@ def resolve_data_directories(args):
         COMPUTE_DATA_DIR_BASE_DIR,
         TARGET_DIR,
         COMPUTE_OUTPUT_DIR,
+        LOCAL_OUTPUT_DIR,
     )
 
 

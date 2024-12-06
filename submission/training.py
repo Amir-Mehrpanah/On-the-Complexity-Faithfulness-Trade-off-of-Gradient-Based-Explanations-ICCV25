@@ -39,6 +39,7 @@ def main(args):
         COMPUTE_DATA_DIR_BASE_DIR,
         TARGET_DIR,
         COMPUTE_OUTPUT_DIR,
+        LOCAL_OUTPUT_DIR,
     ) = resolve_data_directories(args)
 
     os.system("module load Fpart/1.5.1-gcc-8.5.0")

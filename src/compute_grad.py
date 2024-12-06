@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+import time
 import os
 import torch
 
@@ -160,10 +161,12 @@ def compute_grad_and_save(
     grad_means = []
     grad_vars = []
     corrects = []
+    time_last_entrance = time.time()
     for i, (x, y) in enumerate(test_dataloader):
         x, y = x.to(device), y.to(device)
 
         grad, correct = compute_input_grad(model, x, y)
+
         grad_mean = torch.mean(grad, dim=0).detach().cpu()
         grad_var = torch.var(grad, dim=0).detach().cpu()
 
@@ -172,12 +175,17 @@ def compute_grad_and_save(
         corrects.append(correct)
 
         if (i + 1) % num_batches == 0:
+            print(
+                f"Time taken for {num_batches} batches: {time.time() - time_last_entrance}"
+            )
             corrects = torch.mean(torch.tensor(corrects))
             grad_means = torch.stack(grad_means)
             agg_means = torch.mean(grad_means, dim=0)
             agg_vars = torch.mean(torch.stack(grad_vars), dim=0) + 1 / (
                 len(grad_vars) - 1
             ) * torch.sum((grad_means - agg_means) ** 2, dim=0)
+
+            start_time = time.time()
             torch.save(
                 {
                     "mean": agg_means,
@@ -186,8 +194,14 @@ def compute_grad_and_save(
                 },
                 os.path.join(output_dir, f"outputs_{i}.pth"),
             )
+            print(f"Saving {i} took {time.time() - start_time} seconds.")
+            time_last_entrance = time.time()
 
-        if num_distinct_images > 0 and i >= num_distinct_images:
+            grad_means = []
+            grad_vars = []
+            corrects = []
+
+        if num_distinct_images > 0 and i // num_batches >= num_distinct_images:
             break
 
 

@@ -15,6 +15,7 @@ from src.datasets import (
     extract_the_dataset_on_compute_node,
     move_data_to_compute_node,
     resolve_data_directories,
+    move_output_compute_node,
 )
 from src import compute_grad
 
@@ -36,6 +37,7 @@ def main(args):
         COMPUTE_DATA_DIR_BASE_DIR,
         TARGET_DIR,
         COMPUTE_OUTPUT_DIR,
+        LOCAL_OUTPUT_DIR,
     ) = resolve_data_directories(args)
 
     os.system("module load Fpart/1.5.1-gcc-8.5.0")
@@ -51,6 +53,8 @@ def main(args):
         output_dir=COMPUTE_OUTPUT_DIR,
         **args,
     )
+
+    move_output_compute_node(COMPUTE_OUTPUT_DIR, LOCAL_OUTPUT_DIR)
 
 
 if __name__ == "__main__":
@@ -82,4 +86,5 @@ if __name__ == "__main__":
         print("Job submitted")
         # wait until the job has finished
         if args["block_main"]:
+            print("Waiting for job to finish...")
             job.wait()
