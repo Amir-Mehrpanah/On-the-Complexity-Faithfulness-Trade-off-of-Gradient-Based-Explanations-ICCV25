@@ -1,17 +1,17 @@
 import argparse
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+import os
 import torch
 
-from src.datasets import RepeatedBatchSampler, get_training_and_test_dataloader
+from src.datasets import RepeatedSequentialSampler, get_training_and_test_dataloader
 from src.models import get_model
 from src.utils import (
     ActivationSwitch,
     AugmentationSwitch,
     DatasetSwitch,
-    LossSwitch,
+    ModelSwitch,
     convert_str_to_activation_fn,
-    convert_str_to_loss_fn,
     get_save_path,
 )
 
@@ -85,7 +85,7 @@ def get_inputs():
     )
     parser.add_argument(
         "--model_name",
-        type=str,
+        type=ModelSwitch.convert,
         required=True,
         help="model name",
     )
@@ -95,10 +95,10 @@ def get_inputs():
         help="only evaluate on the test set",
     )
     parser.add_argument(
-        "--max_batches",
+        "--num_distinct_images",
         type=int,
         default=-1,
-        help="maximum number of batches to process",
+        help="maximum number of batches to process enter -1 to process all",
     )
     parser.add_argument(
         "--num_batches",
@@ -111,6 +111,12 @@ def get_inputs():
         type=int,
         default=10,
         help="which epoch to load",
+    )
+    parser.add_argument(
+        "--gaussian_noise_var",
+        type=float,
+        default=1e-5,
+        help="variance of the gaussian noise",
     )
 
     args = parser.parse_args()
@@ -125,50 +131,69 @@ def compute_input_grad(
 ):
     x.requires_grad_(True)
     output = model(x)
-    output = output - output.logsumexp(-1)
-    correct = (output.argmax(1) == y).sum().item()
+    output = output - output.logsumexp(dim=-1, keepdim=True)
+    correct = (output.argmax(-1) == y).sum().item() / y.shape[0]
     output = output.max()
     output.backward()
     grad = x.grad
     return grad, correct
 
 
-async def async_torch_save(idx, obj=None):
-    path = f"output_{idx}.pth"
-    print(f"Saving {path} started.")
-    loop = asyncio.get_running_loop()
-    with ThreadPoolExecutor() as executor:
-        await loop.run_in_executor(executor, torch.save, obj, path)
+# async def async_torch_save(idx, obj=None):
+#     path = f"output_{idx}.pth"
+#     print(f"Saving {path} started.")
+#     loop = asyncio.get_running_loop()
+#     with ThreadPoolExecutor() as executor:
+#         await loop.run_in_executor(executor, torch.save, obj, path)
 
-    print(f"Saving {path} completed.")
+#     print(f"Saving {path} completed.")
 
 
-async def compute_grad_and_save(test_dataloader, model, max_batches, device):
-    tasks = []
+def compute_grad_and_save(
+    test_dataloader,
+    model,
+    num_distinct_images,
+    num_batches,
+    output_dir,
+    device,
+):
+    grad_means = []
+    grad_vars = []
+    corrects = []
     for i, (x, y) in enumerate(test_dataloader):
         x, y = x.to(device), y.to(device)
 
         grad, correct = compute_input_grad(model, x, y)
-        tasks.append(
-            asyncio.create_task(
-                async_torch_save(
-                    i,
-                    obj={
-                        "grad_mx2": torch.mean(grad**2, dim=0).detach().cpu(),
-                        "grad_v": torch.var(grad, dim=0).detach().cpu(),
-                        "correct": correct,
-                    },
-                )
-            )
-        )
-        if max_batches > 0 and i >= max_batches:
-            break
+        grad_mean = torch.mean(grad, dim=0).detach().cpu()
+        grad_var = torch.var(grad, dim=0).detach().cpu()
 
-    await asyncio.gather(*tasks)  # Wait for all tasks to complete
+        grad_means.append(grad_mean)
+        grad_vars.append(grad_var)
+        corrects.append(correct)
+
+        if (i + 1) % num_batches == 0:
+            corrects = torch.mean(torch.tensor(corrects))
+            grad_means = torch.stack(grad_means)
+            agg_means = torch.mean(grad_means, dim=0)
+            agg_vars = torch.mean(torch.stack(grad_vars), dim=0) + 1 / (
+                len(grad_vars) - 1
+            ) * torch.sum((grad_means - agg_means) ** 2, dim=0)
+            torch.save(
+                {
+                    "mean": agg_means,
+                    "var": agg_vars,
+                    "correct": corrects,
+                },
+                os.path.join(output_dir, f"outputs_{i}.pth"),
+            )
+
+        if num_distinct_images > 0 and i >= num_distinct_images:
+            break
 
 
 def main(
     root_path,
+    output_dir,
     dataset,
     batch_size,
     img_size,
@@ -181,29 +206,31 @@ def main(
     bias,
     epoch,
     eval_only_on_test,
-    max_batches,
+    num_distinct_images,
     num_batches,
+    gaussian_noise_var,
     device,
     **args,
 ):
     activation_fn = convert_str_to_activation_fn(activation)
-    sampler = (
-        lambda datasource: RepeatedBatchSampler(
-            datasource=datasource, num_repeats=batch_size * num_batches
-        ),
+    sampler = lambda datasource: RepeatedSequentialSampler(
+        datasource=datasource,
+        num_repeats=batch_size * num_batches,
     )
+
     aux = get_training_and_test_dataloader(
         dataset,
         root_path,
         batch_size,
-        img_size=img_size,
-        augmentation=augmentation,
-        add_inverse=add_inverse,
         num_workers=num_workers,
         prefetch_factor=prefetch_factor,
         get_only_test=eval_only_on_test,
         shuffle=False,
         sampler=sampler,
+        img_size=img_size,
+        augmentation=augmentation,
+        add_inverse=add_inverse,
+        gaussian_noise_var=gaussian_noise_var,
     )
 
     if eval_only_on_test:
@@ -232,14 +259,16 @@ def main(
     model.load_state_dict(checkpoint)
     model.eval()
 
-    asyncio.run(
-        compute_grad_and_save(
-            test_dataloader,
-            model,
-            max_batches,
-            device,
-        )
+    # asyncio.run(
+    compute_grad_and_save(
+        test_dataloader,
+        model,
+        num_distinct_images,
+        num_batches,
+        output_dir,
+        device,
     )
+    # )
     if eval_only_on_test:
         return
 
@@ -247,7 +276,9 @@ def main(
     #     compute_grad_and_save(
     #         train_dataloader,
     #         model,
-    #         max_batches,
+    #         num_distinct_images,
+    #         num_batches,
+    #         output_dir,
     #         device,
     #     )
     # )

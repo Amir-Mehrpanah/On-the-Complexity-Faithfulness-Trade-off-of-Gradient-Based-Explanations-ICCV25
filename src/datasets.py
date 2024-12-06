@@ -47,9 +47,11 @@ def resolve_data_directories(args):
     if args["port"] == 0:
         # Running locally
         COMPUTE_DATA_DIR = paths.get_local_data_dir(args["dataset"])
+        COMPUTE_OUTPUT_DIR = paths.LOCAL_OUTPUT_DIR
     else:
         # Running on a compute node
         COMPUTE_DATA_DIR = paths.get_remote_data_dir(args["dataset"])
+        COMPUTE_OUTPUT_DIR = paths.COMPUTE_OUTPUT_DIR
 
     if DATA_DIR.endswith(".tgz"):
         EXT = "tgz"
@@ -61,7 +63,16 @@ def resolve_data_directories(args):
     COMPUTE_DATA_DIR_BASE_DIR = os.path.join(COMPUTE_DATA_DIR, BASE_DIR)
     os.makedirs(COMPUTE_DATA_DIR_BASE_DIR, exist_ok=True)
     TARGET_DIR = COMPUTE_DATA_DIR_BASE_DIR if EXT == "tar" else COMPUTE_DATA_DIR
-    return DATA_DIR, COMPUTE_DATA_DIR, EXT, COMPUTE_DATA_DIR_BASE_DIR, TARGET_DIR
+
+    os.makedirs(COMPUTE_OUTPUT_DIR, exist_ok=True)
+    return (
+        DATA_DIR,
+        COMPUTE_DATA_DIR,
+        EXT,
+        COMPUTE_DATA_DIR_BASE_DIR,
+        TARGET_DIR,
+        COMPUTE_OUTPUT_DIR,
+    )
 
 
 def extract_the_dataset_on_compute_node(
@@ -118,15 +129,15 @@ def move_data_to_compute_node(
         raise RuntimeError(f"Failed to sync data: {result.stderr}")
 
 
-class RepeatedBatchSampler(torch.utils.data.Sampler):
+class RepeatedSequentialSampler(torch.utils.data.Sampler):
     """Wraps another sampler to yield a minibatch of indices multiple times.
     Args:
-        sampler (Sampler): Base sampler.
+        datasource (torch.utils.data.Dataset): The dataset to sample from.
         num_repeats (int): Number of times to repeat the indices.
     """
 
-    def __init__(self, sampler: torch.utils.data.Sampler, num_repeats: int):
-        self.sampler = sampler
+    def __init__(self, datasource: torch.utils.data.Dataset, num_repeats: int):
+        self.sampler = torch.utils.data.SequentialSampler(datasource)
         self.num_repeats = num_repeats
 
     def __iter__(self):
@@ -172,7 +183,7 @@ def get_training_and_test_dataloader(
         batch_size=batch_size,
         num_workers=num_workers,
         prefetch_factor=prefetch_factor,
-        pin_memory=True,
+        # pin_memory=True,
         sampler=None if test_sampler is None else test_sampler,
     )
 
@@ -185,7 +196,7 @@ def get_training_and_test_dataloader(
         shuffle=shuffle,
         num_workers=num_workers,
         prefetch_factor=prefetch_factor,
-        pin_memory=True,
+        # pin_memory=True,
         sampler=None if train_sampler is None else train_sampler,
     )
 
@@ -221,6 +232,7 @@ def get_imagenette_dataset(
     root_path,
     img_size,
     augmentation,
+    gaussian_noise_var,
     add_inverse=False,
     **kwargs,
 ):
@@ -229,14 +241,17 @@ def get_imagenette_dataset(
     training_data = get_imagenette_train(
         root_path,
         img_size,
-        augmentation,
         add_inverse,
+        augmentation,
+        gaussian_noise_var,
         label_transform,
     )
     test_data = get_imagenette_test(
         root_path,
         img_size,
         add_inverse,
+        augmentation,
+        gaussian_noise_var,
         label_transform,
     )
 
@@ -246,10 +261,10 @@ def get_imagenette_dataset(
 def get_imagenette_train(
     root_path,
     img_size,
-    augmentation,
     add_inverse,
-    label_transform=None,
+    augmentation,
     gaussian_noise_var=0.05,
+    label_transform=None,
 ):
     assert isinstance(
         augmentation, AugmentationSwitch

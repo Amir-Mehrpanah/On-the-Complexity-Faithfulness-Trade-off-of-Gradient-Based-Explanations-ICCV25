@@ -70,10 +70,11 @@ def get_save_path(
     epoch,
     add_inverse,
 ):
-    augmentation = "aug" if augmentation else "noaug"
-    add_inverse = "inv" if add_inverse else "noinv"
-    bias = "bias" if bias else "nobias"
-    return f"checkpoints/{model_name}_{activation}_{augmentation}.pth"
+    # augmentation = "aug" if augmentation else "noaug"
+    # bias = "bias" if bias else "nobias"
+    # add_inverse = "inv" if add_inverse else "noinv"
+    
+    return f"checkpoints/{model_name}_{activation}.pt"
 
 
 def save_pth(model, path):

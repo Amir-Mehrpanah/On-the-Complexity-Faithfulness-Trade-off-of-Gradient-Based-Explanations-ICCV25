@@ -8,11 +8,14 @@ IMAGENETTE_ROOT = f"{DATASETS_COMMON}/imagenette2.tgz"
 IMAGENET_TRAIN_ROOT = f"{DATASETS_COMMON}/imagenet/train/"
 IMAGENET_VAL_ROOT = f"{DATASETS_COMMON}/imagenet/val/"
 
+COMPUTE_OUTPUT_DIR = "/scratch/local/outputs/"
+LOCAL_OUTPUT_DIR = ".tmp/outputs/"
+
 
 def get_local_data_dir(dataset):
-    '''
+    """
     This function is for visualization or debugging purposes. It returns the local path of the dataset.
-    '''
+    """
     if str(dataset) == "CIFAR10":
         return f"/home/x_amime/x_amime/projects/kernel-view-to-explainability/.tmp/CIFAR10/"
     elif str(dataset) == "IMAGENETTE":
@@ -23,4 +26,3 @@ def get_local_data_dir(dataset):
 
 def get_remote_data_dir(dataset):
     return f"/scratch/local/{dataset}/"
-
