@@ -171,16 +171,12 @@ def compute_grad_and_save(
     grad_vars = []
     corrects = []
     print("Starting to compute grads")
-    print(f"Number of batches {num_batches} with batch size {dataloader.batch_size}")
-    print(f"Number of distinct images: {num_distinct_images}")
-    print(f"Output directory: {output_dir}")
-    print(f"model: {model} device: {device}")
-
     for i, (x, y) in enumerate(dataloader):
         x, y = x.to(device), y.to(device)
 
         grad, output = forward_batch_grad(model, x)
-
+        grad = grad**2
+        
         correct = (output.argmax(-1) == y).sum().item() / y.shape[0]
         grad_mean = torch.mean(grad, dim=0).detach().cpu()
         grad_var = torch.var(grad, dim=0).detach().cpu()
@@ -290,12 +286,31 @@ def main(
     device,
     **args,
 ):
+    print("root_path", root_path)
+    print("output_dir", output_dir)
+    print("dataset", dataset)
+    print("batch_size", batch_size)
+    print("img_size", img_size)
+    print("augmentation", augmentation)
+    print("add_inverse", add_inverse)
+    print("num_workers", num_workers)
+    print("prefetch_factor", prefetch_factor)
+    print("model_name", model_name)
+    print("activation", activation)
+    print("bias", bias)
+    print("epoch", epoch)
+    print("eval_only_on_test", eval_only_on_test)
+    print("num_distinct_images", num_distinct_images)
+    print("num_batches", num_batches)
+    print("gaussian_noise_var", gaussian_noise_var)
+    print("stats", stats)
+    print("device", device)
+
     activation_fn = convert_str_to_activation_fn(activation)
     sampler = lambda datasource: RepeatedSequentialSampler(
         datasource=datasource,
         num_repeats=batch_size * num_batches,
     )
-    print("gaussian_noise_var", gaussian_noise_var)
     aux = get_training_and_test_dataloader(
         dataset,
         root_path,
