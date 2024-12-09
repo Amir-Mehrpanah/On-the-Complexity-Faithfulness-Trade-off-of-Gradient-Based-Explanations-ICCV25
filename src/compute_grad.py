@@ -1,7 +1,6 @@
 import argparse
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
-import time
+import numpy as np
+from scipy.stats import rankdata
 import os
 import torch
 
@@ -120,34 +119,43 @@ def get_inputs():
         help="variance of the gaussian noise",
     )
 
+    # this variable more likely to be a constant. unnecessary to be passed as an argument
+    stats = {
+        "mean_rank": None,
+        "var_rank": None,
+        "correct": None,
+        "image": None,
+        "label": None,
+        "batch_size": None,
+    }
+
     args = parser.parse_args()
     args = vars(args)
+    args["stats"] = stats
     return args
 
 
-def compute_input_grad(
-    model,
+def forward_single(
     x,
-    y,
+    model,
 ):
-    x.requires_grad_(True)
     output = model(x)
     output = output - output.logsumexp(dim=-1, keepdim=True)
-    correct = (output.argmax(-1) == y).sum().item() / y.shape[0]
-    output = output.max()
-    output.backward()
-    grad = x.grad
-    return grad, correct
+    return output.max(), output
 
 
-# async def async_torch_save(idx, obj=None):
-#     path = f"output_{idx}.pth"
-#     print(f"Saving {path} started.")
-#     loop = asyncio.get_running_loop()
-#     with ThreadPoolExecutor() as executor:
-#         await loop.run_in_executor(executor, torch.save, obj, path)
+def forward_single_grad(model, x):
+    # assert that we have only one image
+    assert x.ndim == 3, "x should have shape (C, H, W)"
+    x = x.unsqueeze(0)  # (1, C, H, W)
+    grad, output = torch.func.grad(forward_single, has_aux=True)(x, model)
+    grad = grad.squeeze(0)  # (C, H, W)
+    output = output.squeeze(0)  # (num_classes,)
+    return grad, output
 
-#     print(f"Saving {path} completed.")
+
+def forward_batch_grad(model, x):
+    return torch.func.vmap(forward_single_grad, in_dims=(None, 0), out_dims=0)(model, x)
 
 
 def compute_grad_and_save(
@@ -156,6 +164,7 @@ def compute_grad_and_save(
     num_distinct_images,
     num_batches,
     output_dir,
+    stats,
     device,
 ):
     grad_means = []
@@ -170,8 +179,9 @@ def compute_grad_and_save(
     for i, (x, y) in enumerate(dataloader):
         x, y = x.to(device), y.to(device)
 
-        grad, correct = compute_input_grad(model, x, y)
+        grad, output = forward_batch_grad(model, x)
 
+        correct = (output.argmax(-1) == y).sum().item() / y.shape[0]
         grad_mean = torch.mean(grad, dim=0).detach().cpu()
         grad_var = torch.var(grad, dim=0).detach().cpu()
 
@@ -180,24 +190,16 @@ def compute_grad_and_save(
         corrects.append(correct)
 
         if (i + 1) % num_batches == 0:
-            corrects = torch.mean(torch.tensor(corrects))
-            grad_means = torch.stack(grad_means)
-            agg_means = torch.mean(grad_means, dim=0)
-            agg_vars = torch.mean(torch.stack(grad_vars), dim=0) + 1 / (
-                max(
-                    len(grad_vars) - 1, 1
-                )  # avoid division by zero in case of single batch
-            ) * torch.sum((grad_means - agg_means) ** 2, dim=0)
-
-            torch.save(
-                {
-                    "mean": agg_means.detach().cpu(),
-                    "var": agg_vars.detach().cpu(),
-                    "correct": corrects.detach().cpu(),
-                    "image": x.detach().cpu(),
-                    "label": y.detach().cpu(),
-                },
-                os.path.join(output_dir, f"outputs_{i // num_batches}.pt"),
+            save_state(
+                num_batches,
+                output_dir,
+                grad_means,
+                grad_vars,
+                corrects,
+                i,
+                x,
+                y,
+                stats,
             )
 
             grad_means = []
@@ -206,6 +208,64 @@ def compute_grad_and_save(
 
         if num_distinct_images > 0 and i // num_batches >= num_distinct_images:
             break
+
+
+def rank_normalize(input_gradient):
+    expected_shape = input_gradient.shape
+    temp = rankdata(input_gradient.flatten()) / np.prod(expected_shape)
+    return temp.reshape(expected_shape)
+
+
+def save_state(
+    num_batches,
+    output_dir,
+    grad_means,
+    grad_vars,
+    corrects,
+    index,
+    x,
+    y,
+    stats,
+):
+    grad_means = torch.stack(grad_means)
+
+    if "mean" in stats or "mean_rank" in stats:
+        agg_means = torch.mean(grad_means, dim=0)
+
+        if "mean" in stats:
+            stats["mean"] = agg_means.sum(dim=0).detach().cpu()
+
+        if "mean_rank" in stats:
+            stats["mean_rank"] = rank_normalize(agg_means.sum(dim=0).numpy())
+
+    if "var" in stats or "var_rank" in stats:
+        agg_vars = torch.mean(torch.stack(grad_vars), dim=0) + 1 / (
+            max(len(grad_vars) - 1, 1)  # avoid division by zero in case of single batch
+        ) * torch.sum((grad_means - agg_means) ** 2, dim=0)
+
+        if "var" in stats:
+            stats["var"] = agg_vars.sum(dim=0).detach().cpu()
+
+        if "var_rank" in stats:
+            agg_vars = rank_normalize(agg_vars.sum(dim=0).numpy())
+            stats["var_rank"] = agg_vars
+
+    if "correct" in stats:
+        stats["correct"] = np.mean(corrects)
+
+    if "image" in stats:
+        stats["image"] = x[0].detach().cpu()
+
+    if "label" in stats:
+        stats["label"] = y[0].detach().cpu()
+
+    if "batch_size" in stats:
+        stats["batch_size"] = x.shape[0]
+
+    torch.save(
+        stats,
+        os.path.join(output_dir, f"outputs_{index // num_batches}.pt"),
+    )
 
 
 def main(
@@ -226,6 +286,7 @@ def main(
     num_distinct_images,
     num_batches,
     gaussian_noise_var,
+    stats,
     device,
     **args,
 ):
@@ -234,7 +295,7 @@ def main(
         datasource=datasource,
         num_repeats=batch_size * num_batches,
     )
-
+    print("gaussian_noise_var", gaussian_noise_var)
     aux = get_training_and_test_dataloader(
         dataset,
         root_path,
@@ -276,20 +337,18 @@ def main(
     model.load_state_dict(checkpoint)
     model.eval()
 
-    # asyncio.run(
     compute_grad_and_save(
         test_dataloader,
         model,
         num_distinct_images,
         num_batches,
         output_dir,
+        stats,
         device,
     )
-    # )
     if eval_only_on_test:
         return
 
-    # asyncio.run(
     #     compute_grad_and_save(
     #         train_dataloader,
     #         model,
@@ -298,4 +357,3 @@ def main(
     #         output_dir,
     #         device,
     #     )
-    # )

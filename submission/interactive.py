@@ -1,5 +1,6 @@
+# type: ignore
 # %% CD
-# %cd '/proj/azizpour-group/users/x_amime/projects/kernel-view-to-explainability/'
+%cd '/proj/azizpour-group/users/x_amime/projects/kernel-view-to-explainability/'
 
 # %% imports
 
@@ -16,10 +17,10 @@ from src.utils import (
 
 activations = [
     ActivationSwitch.RELU,
-    # ActivationSwitch.LEAKY_RELU,
-    # ActivationSwitch.SOFTPLUS_B1,
+    ActivationSwitch.LEAKY_RELU,
+    ActivationSwitch.SOFTPLUS_B1,
     ActivationSwitch.SOFTPLUS_B5,
-    # ActivationSwitch.SOFTPLUS_B10,
+    ActivationSwitch.SOFTPLUS_B10,
 ]
 losses = [
     LossSwitch.CE,
@@ -31,31 +32,29 @@ add_inverses = [
 ]
 model_names = [
     ModelSwitch.RESNET34,
-    # ModelSwitch.RESNET50,
-    # ModelSwitch.SIMPLE_CNN,
+    ModelSwitch.RESNET50,
+    ModelSwitch.SIMPLE_CNN,
 ]
 dataset = DatasetSwitch.IMAGENETTE
 bias = "--nobias"
 port = ""  # --port 5678
 block_main = ""  # "--block_main"
-# batch_size = 256
 batch_sizes = {
-    ActivationSwitch.RELU: 32,
-    ActivationSwitch.LEAKY_RELU: 32,
-    ActivationSwitch.SOFTPLUS_B_1: 32,
-    ActivationSwitch.SOFTPLUS_B1: 32,
-    ActivationSwitch.SOFTPLUS_B5: 32,
-    ActivationSwitch.SOFTPLUS_B10: 32,
+    ActivationSwitch.RELU: 128,
+    ActivationSwitch.LEAKY_RELU: 128,
+    ActivationSwitch.SOFTPLUS_B_1: 128,
+    ActivationSwitch.SOFTPLUS_B1: 128,
+    ActivationSwitch.SOFTPLUS_B5: 128,
+    ActivationSwitch.SOFTPLUS_B10: 128,
 }
-lr = 1e-3
-epochs = 100
 num_workers = 16
 prefetch_factor = 16
-patience = 5
-ckpt_mod = 5  # checkpoint if epoch % ckpt_mod == 0
-
 
 # %% submit training
+patience = 5
+lr = 1e-3
+ckpt_mod = 5  # checkpoint if epoch % ckpt_mod == 0
+epochs = 100
 
 augmentations = [
     AugmentationSwitch.TRAIN,
@@ -88,13 +87,13 @@ for activation, loss, add_inverse, model_name, augmentation in product(
         break
 
 # %% submit grads
-num_batches = 1
+num_batches = 4
 augmentations = [
     AugmentationSwitch.EXP_GEN,
 ]
 epoch = 0
 num_distinct_images = 10
-gaussian_noise_var = 1e-4
+gaussian_noise_var = 1e-5
 for activation, add_inverse, model_name, augmentation in product(
     activations,
     add_inverses,
@@ -119,16 +118,19 @@ for activation, add_inverse, model_name, augmentation in product(
         print(f"Error: {activation} {model_name}")
         break
 
+# %% extract the grad results
+!bash src/ext.sh
 
 # %% remove stuff
 
+# !rm -r logs/runs/* 
 # !mkdir checkpoints/
 # !ls checkpoints/   
 # !rm checkpoints/*  
-# !rm -r logs/.su*   
-# !rm -r logs/12*  
-# !rm -r logs/runs/* 
-# !bash ext.sh
+!rm -r logs/.su*   
+!rm -r logs/12*  
+!rm -r .tmp/extracted/*
+!rm -r .tmp/outputs/*
 
 
 # %% visualize
@@ -136,7 +138,12 @@ for activation, add_inverse, model_name, augmentation in product(
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
-
-data = torch.load("/home/x_amime/x_amime/projects/kernel-view-to-explainability/.tmp/extracted/RESNET34_RELU/outputs_0.pt")
-
-plt.imshow(data["image"][0].permute(1, 2, 0))
+from glob import glob
+j=0
+glob_path = f"/home/x_amime/x_amime/projects/kernel-view-to-explainability/.tmp/extracted/*/outputs_{j}.pt"
+for path in glob(glob_path):
+    data = torch.load(path)
+    prefix = path.split("/")[-2]
+    plt.imshow(data["var_rank"])
+    plt.savefig(f"visualizations/{j}/vr_{prefix}.png")
+    plt.close()

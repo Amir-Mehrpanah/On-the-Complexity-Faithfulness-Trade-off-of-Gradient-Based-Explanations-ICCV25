@@ -267,16 +267,16 @@ def get_imagenette_dataset(
         root_path,
         img_size,
         add_inverse,
-        augmentation,
         gaussian_noise_var,
+        augmentation,
         label_transform,
     )
     test_data = get_imagenette_test(
         root_path,
         img_size,
         add_inverse,
-        augmentation,
         gaussian_noise_var,
+        augmentation,
         label_transform,
     )
 
@@ -287,8 +287,8 @@ def get_imagenette_train(
     root_path,
     img_size,
     add_inverse,
+    gaussian_noise_var,
     augmentation,
-    gaussian_noise_var=0.05,
     label_transform=None,
 ):
     assert isinstance(
@@ -379,8 +379,8 @@ def get_imagenette_test(
     root_path,
     img_size,
     add_inverse,
+    gaussian_noise_var,
     augmentation=AugmentationSwitch.TRAIN,
-    gaussian_noise_var=0.05,
     label_transform=None,
 ):
     assert isinstance(
