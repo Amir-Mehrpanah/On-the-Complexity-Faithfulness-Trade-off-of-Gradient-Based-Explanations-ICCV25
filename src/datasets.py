@@ -40,7 +40,7 @@ def register_dataset(name):
     return decorator
 
 
-def move_output_compute_node(COMPUTE_OUTPUT_DIR, LOCAL_OUTPUT_DIR):
+def move_output_compute_node(COMPUTE_OUTPUT_DIR, LOCAL_OUTPUT_DIR, file_name):
 
     result = subprocess.run(
         [
@@ -53,7 +53,7 @@ def move_output_compute_node(COMPUTE_OUTPUT_DIR, LOCAL_OUTPUT_DIR):
             "-s",
             "2000M",
             COMPUTE_OUTPUT_DIR,
-            LOCAL_OUTPUT_DIR,
+            os.path.join(LOCAL_OUTPUT_DIR, f"{file_name}"),
         ],
         capture_output=True,
         text=True,

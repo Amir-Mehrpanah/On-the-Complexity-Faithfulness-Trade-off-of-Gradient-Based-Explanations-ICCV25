@@ -62,6 +62,17 @@ class AugmentationSwitch(ConvertableEnum):
     TRAIN = 3  # used in training for training set
 
 
+def get_experiment_prefix(
+    model_name,
+    activation,
+    augmentation,
+    bias,
+    epoch,
+    add_inverse,
+):
+    return f"{model_name}_{activation}"
+
+
 def get_save_path(
     model_name,
     activation,
@@ -73,8 +84,15 @@ def get_save_path(
     # augmentation = "aug" if augmentation else "noaug"
     # bias = "bias" if bias else "nobias"
     # add_inverse = "inv" if add_inverse else "noinv"
-    
-    return f"checkpoints/{model_name}_{activation}.pt"
+    experiment_prefix = get_experiment_prefix(
+        model_name,
+        activation,
+        augmentation,
+        bias,
+        epoch,
+        add_inverse,
+    )
+    return f"checkpoints/{experiment_prefix}.pt"
 
 
 def save_pth(model, path):

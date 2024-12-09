@@ -10,7 +10,7 @@ os.chdir(workspace_dir)
 sys.path.insert(0, workspace_dir)
 
 from src import datasets
-from src.utils import determine_device
+from src.utils import determine_device, get_experiment_prefix
 from src.datasets import (
     extract_the_dataset_on_compute_node,
     move_data_to_compute_node,
@@ -53,8 +53,20 @@ def main(args):
         output_dir=COMPUTE_OUTPUT_DIR,
         **args,
     )
-
-    move_output_compute_node(COMPUTE_OUTPUT_DIR, LOCAL_OUTPUT_DIR)
+    
+    experiment_prefix = get_experiment_prefix(
+        model_name=args["model_name"],
+        activation=args["activation"],
+        augmentation=args["augmentation"],
+        bias=args["bias"],
+        epoch=args["epoch"],
+        add_inverse=args["add_inverse"],
+    )
+    move_output_compute_node(
+        COMPUTE_OUTPUT_DIR,
+        LOCAL_OUTPUT_DIR,
+        experiment_prefix,
+    )
 
 
 if __name__ == "__main__":

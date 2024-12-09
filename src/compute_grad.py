@@ -151,7 +151,7 @@ def compute_input_grad(
 
 
 def compute_grad_and_save(
-    test_dataloader,
+    dataloader,
     model,
     num_distinct_images,
     num_batches,
@@ -161,8 +161,13 @@ def compute_grad_and_save(
     grad_means = []
     grad_vars = []
     corrects = []
-    time_last_entrance = time.time()
-    for i, (x, y) in enumerate(test_dataloader):
+    print("Starting to compute grads")
+    print(f"Number of batches {num_batches} with batch size {dataloader.batch_size}")
+    print(f"Number of distinct images: {num_distinct_images}")
+    print(f"Output directory: {output_dir}")
+    print(f"model: {model} device: {device}")
+
+    for i, (x, y) in enumerate(dataloader):
         x, y = x.to(device), y.to(device)
 
         grad, correct = compute_input_grad(model, x, y)
@@ -175,27 +180,25 @@ def compute_grad_and_save(
         corrects.append(correct)
 
         if (i + 1) % num_batches == 0:
-            print(
-                f"Time taken for {num_batches} batches: {time.time() - time_last_entrance}"
-            )
             corrects = torch.mean(torch.tensor(corrects))
             grad_means = torch.stack(grad_means)
             agg_means = torch.mean(grad_means, dim=0)
             agg_vars = torch.mean(torch.stack(grad_vars), dim=0) + 1 / (
-                len(grad_vars) - 1
+                max(
+                    len(grad_vars) - 1, 1
+                )  # avoid division by zero in case of single batch
             ) * torch.sum((grad_means - agg_means) ** 2, dim=0)
 
-            start_time = time.time()
             torch.save(
                 {
-                    "mean": agg_means,
-                    "var": agg_vars,
-                    "correct": corrects,
+                    "mean": agg_means.detach().cpu(),
+                    "var": agg_vars.detach().cpu(),
+                    "correct": corrects.detach().cpu(),
+                    "image": x.detach().cpu(),
+                    "label": y.detach().cpu(),
                 },
-                os.path.join(output_dir, f"outputs_{i}.pth"),
+                os.path.join(output_dir, f"outputs_{i // num_batches}.pt"),
             )
-            print(f"Saving {i} took {time.time() - start_time} seconds.")
-            time_last_entrance = time.time()
 
             grad_means = []
             grad_vars = []

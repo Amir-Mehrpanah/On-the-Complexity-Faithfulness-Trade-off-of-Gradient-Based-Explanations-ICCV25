@@ -5,7 +5,6 @@
 
 from itertools import product
 import os
-from glob import glob
 from datetime import datetime
 from src.utils import (
     ActivationSwitch,
@@ -19,7 +18,7 @@ activations = [
     ActivationSwitch.RELU,
     # ActivationSwitch.LEAKY_RELU,
     # ActivationSwitch.SOFTPLUS_B1,
-    # ActivationSwitch.SOFTPLUS_B5,
+    ActivationSwitch.SOFTPLUS_B5,
     # ActivationSwitch.SOFTPLUS_B10,
 ]
 losses = [
@@ -37,16 +36,16 @@ model_names = [
 ]
 dataset = DatasetSwitch.IMAGENETTE
 bias = "--nobias"
-port = "--port 5678"  # --port 5678
-block_main = "--block_main"  # "--block_main"
+port = ""  # --port 5678
+block_main = ""  # "--block_main"
 # batch_size = 256
 batch_sizes = {
-    ActivationSwitch.RELU: 128,
-    ActivationSwitch.LEAKY_RELU: 128,
-    ActivationSwitch.SOFTPLUS_B_1: 128,
-    ActivationSwitch.SOFTPLUS_B1: 128,
-    ActivationSwitch.SOFTPLUS_B5: 128,
-    ActivationSwitch.SOFTPLUS_B10: 128,
+    ActivationSwitch.RELU: 32,
+    ActivationSwitch.LEAKY_RELU: 32,
+    ActivationSwitch.SOFTPLUS_B_1: 32,
+    ActivationSwitch.SOFTPLUS_B1: 32,
+    ActivationSwitch.SOFTPLUS_B5: 32,
+    ActivationSwitch.SOFTPLUS_B10: 32,
 }
 lr = 1e-3
 epochs = 100
@@ -89,12 +88,12 @@ for activation, loss, add_inverse, model_name, augmentation in product(
         break
 
 # %% submit grads
-num_batches = 2
+num_batches = 1
 augmentations = [
     AugmentationSwitch.EXP_GEN,
 ]
 epoch = 0
-num_distinct_images = 4
+num_distinct_images = 10
 gaussian_noise_var = 1e-4
 for activation, add_inverse, model_name, augmentation in product(
     activations,
@@ -123,12 +122,21 @@ for activation, add_inverse, model_name, augmentation in product(
 
 # %% remove stuff
 
-# !mkdir checkpoints/    # type: ignore
-# !ls checkpoints/    # type: ignore
-# !rm checkpoints/*    # type: ignore
-!rm -r logs/.su*    # type: ignore
-!rm -r logs/12*    # type: ignore
-# !rm -r logs/runs/*    # type: ignore
+# !mkdir checkpoints/
+# !ls checkpoints/   
+# !rm checkpoints/*  
+# !rm -r logs/.su*   
+# !rm -r logs/12*  
+# !rm -r logs/runs/* 
+# !bash ext.sh
 
 
-# %%
+# %% visualize
+
+import torch
+import matplotlib.pyplot as plt
+import numpy as np
+
+data = torch.load("/home/x_amime/x_amime/projects/kernel-view-to-explainability/.tmp/extracted/RESNET34_RELU/outputs_0.pt")
+
+plt.imshow(data["image"][0].permute(1, 2, 0))
