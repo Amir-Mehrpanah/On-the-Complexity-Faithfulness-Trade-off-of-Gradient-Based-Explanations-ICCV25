@@ -69,28 +69,19 @@ def get_experiment_prefix(
     bias,
     epoch,
     add_inverse,
+    pre_act,
 ):
-    return f"{model_name}_{activation}"
+    return f"{model_name}_{pre_act}"
 
 
 def get_save_path(
-    model_name,
-    activation,
-    augmentation,
-    bias,
-    epoch,
-    add_inverse,
+    **kwargs,
 ):
     # augmentation = "aug" if augmentation else "noaug"
     # bias = "bias" if bias else "nobias"
     # add_inverse = "inv" if add_inverse else "noinv"
     experiment_prefix = get_experiment_prefix(
-        model_name,
-        activation,
-        augmentation,
-        bias,
-        epoch,
-        add_inverse,
+        **kwargs
     )
     return f"checkpoints/{experiment_prefix}.pt"
 

@@ -2,87 +2,6 @@ from typing import Any, Callable, List, Optional, Type, Union
 from torch import nn
 import torch
 
-from src.utils import ModelSwitch
-
-
-class SimpleConvNet(nn.Module):
-    def __init__(self, input_shape, num_classes, activation, conv_bias, fc_bias):
-        super().__init__()
-        C, H, W = input_shape
-        self.activation = activation
-        self.feature = nn.Sequential(
-            nn.Conv2d(
-                C,
-                out_channels=32,
-                kernel_size=3,
-                stride=1,
-                padding=1,
-                bias=conv_bias,
-            ),
-            self.activation,
-            nn.MaxPool2d(2, 2),
-            nn.Conv2d(
-                32,
-                out_channels=64,
-                kernel_size=3,
-                stride=1,
-                padding=1,
-                bias=conv_bias,
-            ),
-            self.activation,
-            nn.MaxPool2d(2, 2),
-            nn.Conv2d(
-                64,
-                out_channels=128,
-                kernel_size=1,
-                stride=1,
-                padding=1,
-                bias=conv_bias,
-            ),
-            self.activation,
-            nn.MaxPool2d(2, 2),
-            nn.Conv2d(
-                128,
-                out_channels=128,
-                kernel_size=3,
-                stride=1,
-                padding=1,
-                bias=conv_bias,
-            ),
-            self.activation,
-            nn.MaxPool2d(2, 2),
-            nn.Conv2d(
-                128,
-                out_channels=128,
-                kernel_size=1,
-                stride=1,
-                padding=1,
-                bias=conv_bias,
-            ),
-            self.activation,
-            nn.MaxPool2d(2, 2),
-        )
-        self.flatten = nn.Flatten()
-        self.linear_stack = nn.Sequential(
-            nn.Linear(
-                128 * 8 * 8,  # use 7x7 if 28x28 input, 4x4 if 32x32 input
-                512,
-                bias=fc_bias,
-            ),
-            self.activation,
-            nn.Linear(
-                512,
-                num_classes,
-                bias=fc_bias,
-            ),
-        )
-
-    def forward(self, x):
-        x = self.feature(x)
-        x = self.flatten(x)
-        logits = self.linear_stack(x)
-        return logits
-
 
 # copied from pytorch source code
 def conv3x3(
@@ -136,6 +55,7 @@ class BasicBlock(nn.Module):
         planes: int,
         activation: Optional[Callable[..., nn.Module]],
         conv_bias,
+        pre_act: bool = False,
         stride: int = 1,
         downsample: Optional[nn.Module] = None,
         groups: int = 1,
@@ -158,7 +78,7 @@ class BasicBlock(nn.Module):
             stride=stride,
             conv_bias=conv_bias,
         )
-        self.bn1 = norm_layer(planes)
+        self.bn1 = norm_layer(inplanes if pre_act else planes)
         self.activation = activation
         self.conv2 = conv3x3(
             in_planes=planes,
@@ -169,9 +89,32 @@ class BasicBlock(nn.Module):
         self.downsample = downsample
         self.stride = stride
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if pre_act:
+            self.forward = self.forward_preact
+        else:
+            self.forward = self.forward_
+
+    def forward_preact(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
 
+        out = self.bn1(x)
+        out = self.activation(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(out)
+
+        out = self.conv1(out)
+
+        out = self.bn2(out)
+        out = self.activation(out)
+        out = self.conv2(out)
+
+        out += identity
+
+        return out
+
+    def forward_(self, x: torch.Tensor) -> torch.Tensor:
+        identity = x
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.activation(out)
@@ -205,6 +148,7 @@ class Bottleneck(nn.Module):
         planes: int,
         activation: Optional[Callable[..., nn.Module]],
         conv_bias,
+        pre_act: bool = False,
         stride: int = 1,
         downsample: Optional[nn.Module] = None,
         groups: int = 1,
@@ -222,7 +166,7 @@ class Bottleneck(nn.Module):
             out_planes=width,
             conv_bias=conv_bias,
         )
-        self.bn1 = norm_layer(width)
+        self.bn1 = norm_layer(inplanes if pre_act else width)
         self.conv2 = conv3x3(
             in_planes=width,
             out_planes=width,
@@ -237,12 +181,39 @@ class Bottleneck(nn.Module):
             out_planes=planes * self.expansion,
             conv_bias=conv_bias,
         )
-        self.bn3 = norm_layer(planes * self.expansion)
+        self.bn3 = norm_layer(width if pre_act else planes * self.expansion)
         self.activation = activation
         self.downsample = downsample
         self.stride = stride
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if pre_act:
+            self.forward = self.forward_preact
+        else:
+            self.forward = self.forward_
+
+    def forward_preact(self, x: torch.Tensor) -> torch.Tensor:
+        identity = x
+        out = self.bn1(x)
+        out = self.activation(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(out)
+
+        out = self.conv1(out)
+
+        out = self.bn2(out)
+        out = self.activation(out)
+        out = self.conv2(out)
+
+        out = self.bn3(out)
+        out = self.activation(out)
+        out = self.conv3(out)
+
+        out += identity
+
+        return out
+
+    def forward_(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
 
         out = self.conv1(x)
@@ -276,6 +247,7 @@ class ResNet(nn.Module):
         conv_bias,
         fc_bias,
         activation: Optional[Callable[..., nn.Module]],
+        pre_act: bool = False,
         zero_init_residual: bool = False,
         groups: int = 1,
         width_per_group: int = 64,
@@ -319,6 +291,7 @@ class ResNet(nn.Module):
             blocks=layers[0],
             conv_bias=conv_bias,
             activation=activation,
+            pre_act=pre_act,
         )
         self.layer2 = self._make_layer(
             block=block,
@@ -328,6 +301,7 @@ class ResNet(nn.Module):
             dilate=replace_stride_with_dilation[0],
             conv_bias=conv_bias,
             activation=activation,
+            pre_act=pre_act,
         )
         self.layer3 = self._make_layer(
             block=block,
@@ -337,6 +311,7 @@ class ResNet(nn.Module):
             dilate=replace_stride_with_dilation[1],
             conv_bias=conv_bias,
             activation=activation,
+            pre_act=pre_act,
         )
         self.layer4 = self._make_layer(
             block=block,
@@ -346,6 +321,7 @@ class ResNet(nn.Module):
             dilate=replace_stride_with_dilation[2],
             conv_bias=conv_bias,
             activation=activation,
+            pre_act=pre_act,
         )
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes, bias=fc_bias)
@@ -373,6 +349,11 @@ class ResNet(nn.Module):
                 elif isinstance(m, BasicBlock) and m.bn2.weight is not None:
                     nn.init.constant_(m.bn2.weight, 0)  # type: ignore[arg-type]
 
+        if pre_act:
+            self.forward = self._forward_impl_preact
+        else:
+            self.forward = self._forward_impl
+
     def _make_layer(
         self,
         *,
@@ -381,6 +362,7 @@ class ResNet(nn.Module):
         blocks: int,
         conv_bias,
         activation,
+        pre_act: bool = False,
         stride: int = 1,
         dilate: bool = False,
     ) -> nn.Sequential:
@@ -414,6 +396,7 @@ class ResNet(nn.Module):
                 norm_layer=norm_layer,
                 activation=activation,
                 conv_bias=conv_bias,
+                pre_act=pre_act,
             )
         )
         self.inplanes = planes * block.expansion
@@ -428,10 +411,29 @@ class ResNet(nn.Module):
                     norm_layer=norm_layer,
                     activation=activation,
                     conv_bias=conv_bias,
+                    pre_act=pre_act,
                 )
             )
 
         return nn.Sequential(*layers)
+
+    def _forward_impl_preact(self, x: torch.Tensor) -> torch.Tensor:
+        # See note [TorchScript super()]
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.activation(x)
+        x = self.maxpool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
+
+        return x
 
     def _forward_impl(self, x: torch.Tensor) -> torch.Tensor:
         # See note [TorchScript super()]
@@ -450,60 +452,3 @@ class ResNet(nn.Module):
         x = self.fc(x)
 
         return x
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self._forward_impl(x)
-
-
-def get_model(
-    *,
-    input_shape,
-    model_name,
-    num_classes,
-    activation_fn,
-    bias,
-    **kwargs,
-):
-    if ModelSwitch.SIMPLE_CNN == model_name:
-        return SimpleConvNet(
-            input_shape,
-            num_classes,
-            activation_fn,
-            bias,
-            True,
-        )
-
-    if ModelSwitch.RESNET18 == model_name:
-        return ResNet(
-            BasicBlock,
-            [2, 2, 2, 2],
-            activation=activation_fn,
-            num_classes=num_classes,
-            input_shape=input_shape,
-            conv_bias=bias,
-            fc_bias=True,
-        )
-
-    if ModelSwitch.RESNET34 == model_name:
-        return ResNet(
-            BasicBlock,
-            [3, 4, 6, 3],
-            activation=activation_fn,
-            num_classes=num_classes,
-            input_shape=input_shape,
-            conv_bias=bias,
-            fc_bias=True,
-        )
-
-    if ModelSwitch.RESNET50 == model_name:
-        return ResNet(
-            Bottleneck,
-            [3, 4, 6, 3],
-            activation=activation_fn,
-            num_classes=num_classes,
-            input_shape=input_shape,
-            conv_bias=bias,
-            fc_bias=True,
-        )
-
-    raise NameError(model_name)

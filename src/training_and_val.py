@@ -2,10 +2,11 @@ import argparse
 import torch
 from datetime import datetime
 
-from src.models import get_model
+from src.models.utils import get_model
 from src.datasets import get_training_and_test_dataloader
 from src.utils import (
     ActivationSwitch,
+    AugmentationSwitch,
     LossSwitch,
     DatasetSwitch,
     ModelSwitch,
@@ -86,7 +87,8 @@ def get_inputs():
     )
     parser.add_argument(
         "--augmentation",
-        action="store_true",
+        type=AugmentationSwitch.convert,
+        required=True,
         help="use data augmentation",
     )
     parser.add_argument(
@@ -129,6 +131,17 @@ def get_inputs():
         type=float,
         default=0.95,
         help="gamma for lr scheduler",
+    )
+    parser.add_argument(
+        "--pre_act",
+        action="store_true",
+        help="use preact architecture",
+    )
+    parser.add_argument(
+        "--gaussian_noise_var",
+        type=float,
+        default=1e-5,
+        help="variance of gaussian noise",
     )
 
     args = parser.parse_args()
@@ -206,12 +219,13 @@ def main(
     augmentation,
     add_inverse,
     dataset,
-    port,
     num_workers,
     prefetch_factor,
     patience,
     lr_decay_gamma,
     writer,
+    pre_act,
+    gaussian_noise_var,
     device,
     **kwargs,
 ):
@@ -229,6 +243,7 @@ def main(
             add_inverse=add_inverse,
             num_workers=num_workers,
             prefetch_factor=prefetch_factor,
+            gaussian_noise_var=gaussian_noise_var,
         )
     )
 
@@ -241,6 +256,7 @@ def main(
         activation_fn=activation_fn,
         bias=bias,
         add_inverse=add_inverse,
+        pre_act=pre_act,
     )
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -249,6 +265,7 @@ def main(
         f"Experimen model_name {model_name} activation {activation}"
         f" loss {loss} bias {bias} add_inverse {add_inverse} "
         f"({batch_size},{input_shape}) augmentation {augmentation}"
+        f" pre_act {pre_act} gaussian_noise_var {gaussian_noise_var}"
     )
     old_test_acc = 0
     for epoch in range(epochs):
@@ -280,6 +297,7 @@ def main(
                     bias,
                     epoch,
                     add_inverse,
+                    pre_act,
                 ),
             )
 

@@ -5,7 +5,7 @@ import os
 import torch
 
 from src.datasets import RepeatedSequentialSampler, get_training_and_test_dataloader
-from src.models import get_model
+from src.models.utils import get_model
 from src.utils import (
     ActivationSwitch,
     AugmentationSwitch,
@@ -118,6 +118,11 @@ def get_inputs():
         default=1e-5,
         help="variance of the gaussian noise",
     )
+    parser.add_argument(
+        "--pre_act",
+        action="store_true",
+        help="use preact architecture",
+    )
 
     # this variable more likely to be a constant. unnecessary to be passed as an argument
     stats = {
@@ -176,7 +181,7 @@ def compute_grad_and_save(
 
         grad, output = forward_batch_grad(model, x)
         grad = grad**2
-        
+
         correct = (output.argmax(-1) == y).sum().item() / y.shape[0]
         grad_mean = torch.mean(grad, dim=0).detach().cpu()
         grad_var = torch.var(grad, dim=0).detach().cpu()
@@ -283,6 +288,7 @@ def main(
     num_batches,
     gaussian_noise_var,
     stats,
+    pre_act,
     device,
     **args,
 ):
@@ -338,6 +344,7 @@ def main(
         bias,
         epoch,
         add_inverse,
+        pre_act,
     )
     model = get_model(
         input_shape=input_shape,
@@ -346,6 +353,7 @@ def main(
         activation_fn=activation_fn,
         bias=bias,
         add_inverse=add_inverse,
+        pre_act=pre_act,
     ).to(device)
 
     checkpoint = torch.load(checkpoint_filename, map_location=device)
