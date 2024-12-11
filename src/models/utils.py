@@ -49,6 +49,7 @@ def get_model(
             pre_act=pre_act,
             fc_bias=True,
         )
+    
     if ModelSwitch.RESNET18 == model_name:
         return ResNet(
             BasicBlock,

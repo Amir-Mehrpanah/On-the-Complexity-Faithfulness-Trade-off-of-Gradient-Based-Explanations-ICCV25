@@ -334,6 +334,7 @@ def main(
         epoch=epoch,
         add_inverse=add_inverse,
         pre_act=pre_act,
+        layers=layers,
     )
     model = get_model(
         input_shape=input_shape,
