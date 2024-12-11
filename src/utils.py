@@ -72,8 +72,9 @@ def get_experiment_prefix(
     epoch,
     add_inverse,
     pre_act,
+    layers,
 ):
-    return f"{model_name}_{pre_act}"
+    return f"{model_name}_{layers}"
 
 
 def get_save_path(
