@@ -51,6 +51,7 @@ def get_model(
         )
     
     if ModelSwitch.RESNET18 == model_name:
+        assert "layers" not in kwargs, "layers must not be provided for ResNet18, it seems to be an error"
         return ResNet(
             BasicBlock,
             [2, 2, 2, 2],
@@ -63,6 +64,7 @@ def get_model(
         )
 
     if ModelSwitch.RESNET34 == model_name:
+        assert "layers" not in kwargs, "layers must not be provided for ResNet18, it seems to be an error"
         return ResNet(
             BasicBlock,
             [3, 4, 6, 3],
@@ -75,6 +77,7 @@ def get_model(
         )
 
     if ModelSwitch.RESNET50 == model_name:
+        assert "layers" not in kwargs, "layers must not be provided for ResNet18, it seems to be an error"
         return ResNet(
             Bottleneck,
             [3, 4, 6, 3],
