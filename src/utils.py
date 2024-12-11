@@ -36,6 +36,8 @@ class ModelSwitch(ConvertableEnum):
     RESNET18 = 1002
     RESNET34 = 1003
     RESNET50 = 1004
+    RESNET_BASIC = 1005
+    RESNET_BOTTLENECK = 1006
 
 
 class ActivationSwitch(ConvertableEnum):

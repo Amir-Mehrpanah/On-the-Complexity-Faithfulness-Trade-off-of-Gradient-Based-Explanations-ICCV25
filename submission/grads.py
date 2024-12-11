@@ -53,7 +53,7 @@ def main(args):
         output_dir=COMPUTE_OUTPUT_DIR,
         **args,
     )
-    
+
     experiment_prefix = get_experiment_prefix(
         model_name=args["model_name"],
         activation=args["activation"],
@@ -61,6 +61,7 @@ def main(args):
         bias=args["bias"],
         epoch=args["epoch"],
         add_inverse=args["add_inverse"],
+        pre_act=args["pre_act"],
     )
     move_output_compute_node(
         COMPUTE_OUTPUT_DIR,

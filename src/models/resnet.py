@@ -328,13 +328,16 @@ class ResNet(nn.Module):
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                # nn.init.kaiming_normal_(
-                #     m.weight,
-                #     mode="fan_out",
-                #     nonlinearity=str_activation,
-                # )
+                assert isinstance(activation, nn.ReLU), "Code needs to be updated for other activations"
+                # Relu
+                nn.init.kaiming_normal_(
+                    m.weight,
+                    mode="fan_out",
+                    nonlinearity="relu",
+                )
+                # general activation 
                 # should use other init function that not depend on the activation function
-                nn.init.xavier_normal_(m.weight)
+                # nn.init.xavier_normal_(m.weight)
             elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)

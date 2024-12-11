@@ -123,7 +123,13 @@ def get_inputs():
         action="store_true",
         help="use preact architecture",
     )
-
+    parser.add_argument(
+        "--layers",
+        type=int,
+        nargs="+",
+        default=None,
+        help="number of layers",
+    )
     # this variable more likely to be a constant. unnecessary to be passed as an argument
     stats = {
         "mean_rank": None,
@@ -289,28 +295,11 @@ def main(
     gaussian_noise_var,
     stats,
     pre_act,
+    layers,
     device,
     **args,
 ):
-    print("root_path", root_path)
-    print("output_dir", output_dir)
-    print("dataset", dataset)
-    print("batch_size", batch_size)
-    print("img_size", img_size)
-    print("augmentation", augmentation)
-    print("add_inverse", add_inverse)
-    print("num_workers", num_workers)
-    print("prefetch_factor", prefetch_factor)
-    print("model_name", model_name)
-    print("activation", activation)
-    print("bias", bias)
-    print("epoch", epoch)
-    print("eval_only_on_test", eval_only_on_test)
-    print("num_distinct_images", num_distinct_images)
-    print("num_batches", num_batches)
-    print("gaussian_noise_var", gaussian_noise_var)
-    print("stats", stats)
-    print("device", device)
+    print(locals())
 
     activation_fn = convert_str_to_activation_fn(activation)
     sampler = lambda datasource: RepeatedSequentialSampler(
@@ -338,13 +327,13 @@ def main(
         train_dataloader, test_dataloader, input_shape, num_classes = aux
 
     checkpoint_filename = get_save_path(
-        model_name,
-        activation,
-        augmentation,
-        bias,
-        epoch,
-        add_inverse,
-        pre_act,
+        model_name=model_name,
+        activation=activation,
+        augmentation=augmentation,
+        bias=bias,
+        epoch=epoch,
+        add_inverse=add_inverse,
+        pre_act=pre_act,
     )
     model = get_model(
         input_shape=input_shape,
@@ -354,6 +343,7 @@ def main(
         bias=bias,
         add_inverse=add_inverse,
         pre_act=pre_act,
+        layers=layers,
     ).to(device)
 
     checkpoint = torch.load(checkpoint_filename, map_location=device)

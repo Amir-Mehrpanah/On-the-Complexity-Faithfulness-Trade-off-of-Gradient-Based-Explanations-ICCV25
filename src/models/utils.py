@@ -22,6 +22,33 @@ def get_model(
             True,
         )
 
+    if ModelSwitch.RESNET_BASIC == model_name:
+        assert "layers" in kwargs, "layers must be provided for ResNetBasic"
+        layers = kwargs["layers"]
+        return ResNet(
+            BasicBlock,
+            layers=layers,
+            activation=activation_fn,
+            num_classes=num_classes,
+            input_shape=input_shape,
+            conv_bias=bias,
+            pre_act=pre_act,
+            fc_bias=True,
+        )
+
+    if ModelSwitch.RESNET_BOTTLENECK == model_name:
+        assert "layers" in kwargs, "layers must be provided for ResNetBottleneck"
+        layers = kwargs["layers"]
+        return ResNet(
+            Bottleneck,
+            layers=layers,
+            activation=activation_fn,
+            num_classes=num_classes,
+            input_shape=input_shape,
+            conv_bias=bias,
+            pre_act=pre_act,
+            fc_bias=True,
+        )
     if ModelSwitch.RESNET18 == model_name:
         return ResNet(
             BasicBlock,

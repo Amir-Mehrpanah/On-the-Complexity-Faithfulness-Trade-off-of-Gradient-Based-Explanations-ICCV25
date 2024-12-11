@@ -334,12 +334,20 @@ def get_aug(img_size, augmentation, add_inverse, gaussian_noise_var, split):
                         ),
                         torchvision.transforms.RandomRotation(10),
                         torchvision.transforms.RandomAffine(
-                            degrees=0, translate=(0.1, 0.1)
+                            degrees=5, translate=(0.1, 0.1)
                         ),
                         torchvision.transforms.RandomPerspective(distortion_scale=0.1),
                         torchvision.transforms.RandomErasing(p=0.25, value="random"),
                         torchvision.transforms.RandomGrayscale(p=0.1),
                     ]
+                ),
+                # ablation of Bcos
+                (
+                    AddInverse()
+                    if add_inverse
+                    else torchvision.transforms.Normalize(
+                        IMAGENETTE_MEAN, IMAGENETTE_STD
+                    )
                 ),
                 GaussianISONoise(gaussian_noise_var),
             )

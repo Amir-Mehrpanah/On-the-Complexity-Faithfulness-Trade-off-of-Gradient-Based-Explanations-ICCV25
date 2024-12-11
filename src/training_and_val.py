@@ -143,6 +143,13 @@ def get_inputs():
         default=1e-5,
         help="variance of gaussian noise",
     )
+    parser.add_argument(
+        "--layers",
+        type=int,
+        nargs="+",
+        default=None,
+        help="number of layers",
+    )
 
     args = parser.parse_args()
     args = vars(args)
@@ -226,6 +233,7 @@ def main(
     writer,
     pre_act,
     gaussian_noise_var,
+    layers,
     device,
     **kwargs,
 ):
@@ -257,6 +265,7 @@ def main(
         bias=bias,
         add_inverse=add_inverse,
         pre_act=pre_act,
+        layers=layers,
     )
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -268,6 +277,7 @@ def main(
         f" pre_act {pre_act} gaussian_noise_var {gaussian_noise_var}"
     )
     old_test_acc = 0
+    warmup_epochs = 30
     for epoch in range(epochs):
         print(f"Epoch {epoch+1}\n-------------------------------")
         train_loss, train_acc = train(
@@ -287,24 +297,30 @@ def main(
             device,
             writer,
         )
-        if save_ckpt_criteria(ckpt_mod, epoch, test_acc, old_test_acc):
+        if save_ckpt_criteria(
+            ckpt_mod,
+            epoch,
+            test_acc,
+            old_test_acc,
+            warmup_epochs,
+        ):
             save_pth(
                 model,
                 path=get_save_path(
-                    model_name,
-                    activation,
-                    augmentation,
-                    bias,
-                    epoch,
-                    add_inverse,
-                    pre_act,
+                    model_name=model_name,
+                    activation=activation,
+                    augmentation=augmentation,
+                    bias=bias,
+                    epoch=epoch,
+                    add_inverse=add_inverse,
+                    pre_act=pre_act,
                 ),
             )
 
         scheduler.step()
 
         # early stopping
-        if test_acc < old_test_acc + 1e-3:
+        if (epoch > warmup_epochs) and (test_acc < old_test_acc + 1e-3):
             patience_counter -= 1
             if patience_counter == 0:
                 print("Early stopping")
@@ -314,7 +330,7 @@ def main(
         old_test_acc = test_acc
 
 
-def save_ckpt_criteria(ckpt_mod, epoch, test_acc, old_test_acc, warmup_epochs=30):
+def save_ckpt_criteria(ckpt_mod, epoch, test_acc, old_test_acc, warmup_epochs):
     return (
         (epoch % ckpt_mod == 0)
         and (epoch > warmup_epochs)
