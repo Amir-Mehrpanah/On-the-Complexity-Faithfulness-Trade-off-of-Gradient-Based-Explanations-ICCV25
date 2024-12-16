@@ -32,7 +32,11 @@ class LossSwitch(ConvertableEnum):
 
 
 class ModelSwitch(ConvertableEnum):
+    MNIST_CONV_NET = 1000
     SIMPLE_CNN = 1001
+    SIMPLE_CNN_BN = 1007
+    SIMPLE_CNN_SK = 1008
+    SIMPLE_CNN_SK_BN = 1009
     RESNET18 = 1002
     RESNET34 = 1003
     RESNET50 = 1004
@@ -56,6 +60,7 @@ class DatasetSwitch(ConvertableEnum):
     CIFAR10 = 200
     MNIST = 201
     IMAGENETTE = 202
+    FASHION_MNIST = 203
 
 
 class AugmentationSwitch(ConvertableEnum):
@@ -74,7 +79,7 @@ def get_experiment_prefix(
     pre_act,
     layers,
 ):
-    return f"{model_name}_{layers}"
+    return f"{model_name}_{layers}_{activation}"
 
 
 def get_save_path(
@@ -83,9 +88,7 @@ def get_save_path(
     # augmentation = "aug" if augmentation else "noaug"
     # bias = "bias" if bias else "nobias"
     # add_inverse = "inv" if add_inverse else "noinv"
-    experiment_prefix = get_experiment_prefix(
-        **kwargs
-    )
+    experiment_prefix = get_experiment_prefix(**kwargs)
     return f"checkpoints/{experiment_prefix}.pt"
 
 

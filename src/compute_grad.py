@@ -130,6 +130,13 @@ def get_inputs():
         default=None,
         help="number of layers",
     )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=60,
+        help="timeout for the job",
+    )
+
     # this variable more likely to be a constant. unnecessary to be passed as an argument
     stats = {
         "mean_rank": None,
@@ -188,7 +195,7 @@ def compute_grad_and_save(
         grad, output = forward_batch_grad(model, x)
         grad = grad**2
 
-        correct = (output.argmax(-1) == y).sum().item() / y.shape[0]
+        correct = ((output.argmax(-1) == y).sum() / y.shape[0]).detach().cpu()
         grad_mean = torch.mean(grad, dim=0).detach().cpu()
         grad_var = torch.var(grad, dim=0).detach().cpu()
 
@@ -267,11 +274,11 @@ def save_state(
         stats["label"] = y[0].detach().cpu()
 
     if "batch_size" in stats:
-        stats["batch_size"] = x.shape[0]
+        stats["batch_size"] = x.shape[0] * num_batches
 
     torch.save(
         stats,
-        os.path.join(output_dir, f"outputs_{index // num_batches}.pt"),
+        os.path.join(output_dir, f"outputs_{(index+1) // num_batches}.pt"),
     )
 
 

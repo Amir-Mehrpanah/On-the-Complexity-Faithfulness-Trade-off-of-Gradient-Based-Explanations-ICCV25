@@ -75,9 +75,10 @@ if __name__ == "__main__":
     assert "port" in args, "Please provide a port"
 
     print("submitting jobs")
+
     executor = submitit.AutoExecutor(folder="logs/%j")
     executor.update_parameters(
-        timeout_min=60,
+        timeout_min=args["timeout"],
         cpus_per_task=8,
         slurm_additional_parameters={
             "constraint": "thin",

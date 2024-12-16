@@ -232,6 +232,10 @@ CIFAR10_MEAN = (0.49139968, 0.48215841, 0.44653091)
 CIFAR10_STD = (0.24703223, 0.24348513, 0.26158784)
 IMAGENETTE_MEAN = (0.485, 0.456, 0.406)
 IMAGENETTE_STD = (0.229, 0.224, 0.225)
+FASHION_MNIST_MEAN = (0.5,)
+FASHION_MNIST_STD = (0.5,)
+MNIST_MEAN = (0.5,)
+MNIST_STD = (0.5,)
 
 
 # see b-cos v2 for this
@@ -421,6 +425,39 @@ def get_imagenette_test(
     return test_data
 
 
+@register_dataset(DatasetSwitch.FASHION_MNIST)
+def get_fashion_mnist_dataset(root_path, img_size, **kwargs):
+    img_size = 28 if img_size is None else img_size
+    transform = torchvision.transforms.Compose(
+        [
+            torchvision.transforms.Resize((img_size, img_size)),
+            torchvision.transforms.Normalize(FASHION_MNIST_MEAN, FASHION_MNIST_STD),
+            torchvision.transforms.ToTensor(),
+        ]
+    )
+
+    label_dtype = torch.float32
+    label_transform = None
+
+    training_data = datasets.FashionMNIST(
+        root=root_path,
+        train=True,
+        download=False,
+        transform=transform,
+        target_transform=label_transform,
+    )
+
+    test_data = datasets.FashionMNIST(
+        root=root_path,
+        train=False,
+        download=False,
+        transform=transform,
+        target_transform=label_transform,
+    )
+
+    return training_data, test_data
+
+
 @register_dataset(DatasetSwitch.CIFAR10)
 def get_cifar10_dataset(root_path, img_size, add_inverse=False):
     img_size = 32 if img_size is None else img_size
@@ -494,6 +531,7 @@ def get_mnist_dataset(root_path, img_size, **kwargs):
     transform = torchvision.transforms.Compose(
         [
             torchvision.transforms.Resize((img_size, img_size)),
+            torchvision.transforms.Normalize(MNIST_MEAN, MNIST_STD),
             torchvision.transforms.ToTensor(),
         ]
     )

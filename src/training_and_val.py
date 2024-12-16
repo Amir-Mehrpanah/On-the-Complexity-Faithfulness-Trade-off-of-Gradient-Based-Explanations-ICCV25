@@ -133,6 +133,12 @@ def get_inputs():
         help="gamma for lr scheduler",
     )
     parser.add_argument(
+        "--l2_reg",
+        type=float,
+        default=0.0,
+        help="l2 regularization",
+    )
+    parser.add_argument(
         "--pre_act",
         action="store_true",
         help="use preact architecture",
@@ -149,6 +155,12 @@ def get_inputs():
         nargs="+",
         default=None,
         help="number of layers",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=60,
+        help="timeout for the job",
     )
 
     args = parser.parse_args()
@@ -230,6 +242,7 @@ def main(
     prefetch_factor,
     patience,
     lr_decay_gamma,
+    l2_reg,
     writer,
     pre_act,
     gaussian_noise_var,
@@ -268,7 +281,7 @@ def main(
         layers=layers,
     )
     model.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=l2_reg)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=lr_decay_gamma)
     print(
         f"Experimen model_name {model_name} activation {activation}"

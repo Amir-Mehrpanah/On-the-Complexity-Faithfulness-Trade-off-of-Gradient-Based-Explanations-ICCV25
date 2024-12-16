@@ -88,7 +88,7 @@ if __name__ == "__main__":
     else:
         executor = submitit.AutoExecutor(folder="logs/%j")
         executor.update_parameters(
-            timeout_min=60,
+            timeout_min=args["timeout"],
             cpus_per_task=8,
             slurm_additional_parameters={
                 "constraint": "thin",
