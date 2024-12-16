@@ -168,6 +168,12 @@ def get_inputs():
         default=60,
         help="timeout for the job",
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="random seed",
+    )
 
     args = parser.parse_args()
     args = vars(args)
@@ -254,9 +260,11 @@ def main(
     gaussian_noise_var,
     layers,
     warmup_epochs,
+    seed,
     device,
     **kwargs,
 ):
+    torch.manual_seed(seed)
     activation_fn = convert_str_to_activation_fn(activation)
     loss_fn = convert_str_to_loss_fn(loss)
 
@@ -291,7 +299,7 @@ def main(
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=l2_reg)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=lr_decay_gamma)
     print(
-        f"Experimen model_name {model_name} activation {activation}"
+        f"Experimen model_name {model_name} activation {activation} layers {layers} "
         f" loss {loss} bias {bias} add_inverse {add_inverse} "
         f"({batch_size},{input_shape}) augmentation {augmentation}"
         f" pre_act {pre_act} gaussian_noise_var {gaussian_noise_var}"
@@ -335,6 +343,7 @@ def main(
                     pre_act=pre_act,
                     layers=layers,
                     dataset=dataset,
+                    seed=seed,
                 ),
             )
 

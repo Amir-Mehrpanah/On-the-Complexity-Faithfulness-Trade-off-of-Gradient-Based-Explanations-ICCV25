@@ -1,4 +1,5 @@
 # %% imports
+import torch
 from itertools import product
 import os
 
@@ -14,6 +15,7 @@ from src.utils import (
     AugmentationSwitch,
 )
 
+seeds = [0]
 activations = [
     ActivationSwitch.RELU,
     ActivationSwitch.LEAKY_RELU,
@@ -66,7 +68,7 @@ if 0:  # debug
 else:
     port = ""
     block_main = ""
-    timeout = 60
+    timeout = 20
 
 num_workers = 16
 prefetch_factor = 8
@@ -79,17 +81,27 @@ batch_sizes = {
     ActivationSwitch.SOFTPLUS_B1: 256,
     ActivationSwitch.SOFTPLUS_B5: 256,
 }
+
 patience = 5
 lr = 1e-3
-l2_reg = 1e-4
-ckpt_mod = 5  # checkpoint if epoch % ckpt_mod == 0
+l2_reg = 1e-3
+ckpt_mod = 1  # checkpoint if epoch % ckpt_mod == 0
 epochs = 20
 warmup_epochs = epochs // 4
 gaussian_noise_var = 0.01
 augmentations = [
     AugmentationSwitch.TRAIN,
 ]
-for activation, loss, add_inverse, model_name, augmentation, pre_act, layers in product(
+for (
+    activation,
+    loss,
+    add_inverse,
+    model_name,
+    augmentation,
+    pre_act,
+    layers,
+    seed,
+) in product(
     activations,
     losses,
     add_inverses,
@@ -97,7 +109,9 @@ for activation, loss, add_inverse, model_name, augmentation, pre_act, layers in 
     augmentations,
     pre_acts,
     layerss,
+    seeds,
 ):
+    torch.manual_seed(seed)
     print(f"time: {datetime.now()}")
     if len(layers) > 0:
         layers_ = " ".join(map(str, layers))
@@ -116,7 +130,7 @@ for activation, loss, add_inverse, model_name, augmentation, pre_act, layers in 
         f" {bias} --activation {activation} --loss {loss}"
         f" --lr {lr} --epochs {epochs} --batch_size {batch_size_}"
         f" {add_inverse} --num_workers {num_workers} {layers_}"
-        f" --prefetch_factor {prefetch_factor} {pre_act}"
+        f" --prefetch_factor {prefetch_factor} {pre_act} --seed {seed}"
         f" --tb_postfix {now}_{model_name}_{layers_tb}_{activation_tb}_{dataset_tb}"
         f" --patience {patience} --model_name {model_name}"
         f" --augmentation {augmentation} --gaussian_noise_var {gaussian_noise_var}"
@@ -138,9 +152,8 @@ batch_sizes = {
 augmentations = [
     AugmentationSwitch.EXP_GEN,
 ]
-# Quantitative measures ## @3
 epoch = 0
-num_distinct_images = 5
+num_distinct_images = 25
 gaussian_noise_var = 1e-5
 for activation, add_inverse, model_name, augmentation, pre_act, layers in product(
     activations,
@@ -192,14 +205,40 @@ os.chdir(cwd)
 # !rm -r .tmp/outputs/*
 
 
-# %% visualize
+# %% run measurements on grads
+for activation, add_inverse, model_name, augmentation, pre_act, layers in product(
+    activations,
+    add_inverses,
+    model_names,
+    augmentations,
+    pre_acts,
+    layerss,
+):
+    print(f"time: {datetime.now()}")
+    if len(layers) > 0:
+        layers_ = " ".join(map(str, layers))
+        layers_ = f"--layers {layers_}"
+    else:
+        layers_ = ""
 
+    batch_size_ = batch_sizes[activation]
+    now = datetime.now().strftime("%Y%m%d-%H")
+    output = os.system(
+        f"python submission/quant_measures_grads.py "
+        f" {port} {block_main}"
+        f" --num_workers {num_workers} --prefetch_factor {prefetch_factor}"
+    )
+    if output != 0:
+        print(f"Error: {activation} {model_name}")
+        break
+
+# %% visualize
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
 from glob import glob
 
-keys = ["var_rank", "mean_rank", "image"]
+keys = ["var", "mean", "var_rank", "mean_rank", "image"]
 
 for j in range(4):
     os.makedirs(f"visualizations/{j}", exist_ok=True)
@@ -232,15 +271,16 @@ import torch.nn as nn
 import torch
 
 model = get_model(
-    input_shape=(3, 224, 224),
-    model_name=ModelSwitch.SIMPLE_CNN_SK_BN,
+    input_shape=(1, 28, 28),
+    model_name=ModelSwitch.SIMPLE_CNN_DEPTH,
     num_classes=10,
     activation_fn=nn.ReLU(),
     bias=False,
     pre_act=False,
+    layers=[4],
 )
 
-x = torch.randn(1, 3, 224, 224)
+x = torch.randn(1, 1, 28, 28)
 model(x)
 
 # %%

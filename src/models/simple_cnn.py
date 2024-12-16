@@ -19,49 +19,34 @@ class SimpleConvNet(nn.Module):
         ), "layers must be a list of length 1 where layers[0] <= 4"
 
         self.features = nn.Sequential(
-            nn.Conv2d(C, 32, kernel_size=3, stride=1, padding=1, bias=conv_bias),
+            nn.Conv2d(C, 16, kernel_size=3, stride=1, padding=1, bias=conv_bias),
             activation,
             nn.MaxPool2d(kernel_size=2, stride=2),
         )
-
-        if layers[0] == 1:
-            n_features = 32 * (H // 2) * (W // 2)
-        elif layers[0] == 2:
+        n_features = 16 * (H // 2) * (W // 2)
+        for i in range(layers[0] - 1):
             self.features.add_module(
-                "conv2",
-                nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1, bias=conv_bias),
+                f"conv{i}",
+                nn.Conv2d(
+                    16 * 2**i,
+                    16 * 2 ** (i + 1),
+                    kernel_size=3,
+                    stride=1,
+                    padding=1,
+                    bias=conv_bias,
+                ),
             )
-            self.features.add_module("activation2", activation)
-            self.features.add_module("maxpool2", nn.MaxPool2d(kernel_size=2, stride=2))
-            n_features = 64 * (H // 4) * (W // 4)
-        elif layers[0] == 3:
+            self.features.add_module(f"{activation.__class__.__name__}{i}", activation)
             self.features.add_module(
-                "conv2",
-                nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1, bias=conv_bias),
+                f"maxpool{i}", nn.MaxPool2d(kernel_size=2, stride=2)
             )
-            self.features.add_module("activation2", activation)
-            self.features.add_module("maxpool2", nn.MaxPool2d(kernel_size=2, stride=2))
-            n_features = 128 * (H // 8) * (W // 8)
-        elif layers[0] == 4:
-            self.features.add_module(
-                "conv2",
-                nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1, bias=conv_bias),
-            )
-            self.features.add_module("activation2", activation)
-            self.features.add_module("maxpool2", nn.MaxPool2d(kernel_size=2, stride=2))
-            self.features.add_module(
-                "conv3",
-                nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1, bias=conv_bias),
-            )
-            self.features.add_module("activation3", activation)
-            self.features.add_module("maxpool3", nn.MaxPool2d(kernel_size=2, stride=2))
-            n_features = 256 * (H // 16) * (W // 16)
+            n_features = 16 * 2 ** (i + 1) * (H // 2 ** (i + 2)) * (W // 2 ** (i + 2))
 
         self.flatten = nn.Flatten()
         self.classifier = nn.Sequential(
-            nn.Linear(n_features, 128, bias=fc_bias),
+            nn.Linear(n_features, 512, bias=fc_bias),
             activation,
-            nn.Linear(128, num_classes, bias=fc_bias),
+            nn.Linear(512, num_classes, bias=fc_bias),
         )
 
     def forward(self, x):

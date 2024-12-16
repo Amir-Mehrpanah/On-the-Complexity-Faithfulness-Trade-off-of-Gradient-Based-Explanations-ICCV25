@@ -69,18 +69,28 @@ class AugmentationSwitch(ConvertableEnum):
     TRAIN = 3  # used in training for training set
 
 
+EXPERIMENT_PREFIX_SEP = "::"
+
+
 def get_experiment_prefix(
-    model_name,
-    activation,
-    augmentation,
-    bias,
-    epoch,
-    add_inverse,
-    pre_act,
-    layers,
-    dataset,
+    **kwargs,
 ):
-    return f"{dataset}_{model_name}_{layers}_{activation}"
+    # model_name,
+    # activation,
+    # augmentation,
+    # bias,
+    # epoch,
+    # add_inverse,
+    # pre_act,
+    # layers,
+    # dataset,
+    name_list = []
+    name_list.append(kwargs["dataset"])
+    name_list.append(kwargs["model_name"])
+    name_list.append("_".join(map(str, kwargs["layers"])))
+    name_list.append(kwargs["activation"])
+    name_list.append(kwargs["seed"])
+    return EXPERIMENT_PREFIX_SEP.join(map(str, name_list))
 
 
 def get_save_path(

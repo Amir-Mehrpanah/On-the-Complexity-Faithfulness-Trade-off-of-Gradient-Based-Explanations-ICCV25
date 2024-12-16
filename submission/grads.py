@@ -64,6 +64,7 @@ def main(args):
         pre_act=args["pre_act"],
         layers=args["layers"],
         dataset=args["dataset"],
+        seed=args["seed"],
     )
     move_output_compute_node(
         COMPUTE_OUTPUT_DIR,

@@ -4,8 +4,9 @@ from torch.utils.data import DataLoader
 import torchvision
 import torch
 import subprocess
+from glob import glob
 
-from src.utils import AugmentationSwitch, DatasetSwitch
+from src.utils import AugmentationSwitch, DatasetSwitch, EXPERIMENT_PREFIX_SEP
 from src import paths
 
 registered_datasets = {}
@@ -557,3 +558,32 @@ def get_mnist_dataset(root_path, img_size, **kwargs):
     )
 
     return training_data, test_data
+
+
+class GradsDataset(torch.utils.data.Dataset):
+    def __init__(self, root_path):
+        self.root_path = root_path
+        self.files = glob(os.path.join(root_path, "*/*.pt"))
+
+    def __getitem__(self, idx):
+        file_path = self.files[idx]
+        parent_dir = os.path.basename(os.path.dirname(file_path))
+        extra_vars = parent_dir.split(EXPERIMENT_PREFIX_SEP)
+        data = torch.load(file_path)
+        data["address"] = extra_vars
+        return data
+
+    def __len__(self):
+        return len(self.files)
+
+
+def get_grad_dataloader(root_path, num_workers, prefetch_factor):
+    data = GradsDataset(root_path)
+    dataloader = DataLoader(
+        data,
+        batch_size=1,
+        shuffle=False,
+        num_workers=num_workers,
+        prefetch_factor=prefetch_factor,
+    )
+    return dataloader

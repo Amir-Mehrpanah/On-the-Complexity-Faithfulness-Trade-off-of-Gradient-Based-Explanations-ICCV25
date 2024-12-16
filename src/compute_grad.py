@@ -141,6 +141,8 @@ def get_inputs():
     stats = {
         "mean_rank": None,
         "var_rank": None,
+        "mean": None,
+        "var": None,
         "correct": None,
         "image": None,
         "label": None,
@@ -276,9 +278,10 @@ def save_state(
     if "batch_size" in stats:
         stats["batch_size"] = x.shape[0] * num_batches
 
+    stats["index"] = index // num_batches
     torch.save(
         stats,
-        os.path.join(output_dir, f"outputs_{(index+1) // num_batches}.pt"),
+        os.path.join(output_dir, f"{index // num_batches}.pt"),
     )
 
 
@@ -343,6 +346,7 @@ def main(
         pre_act=pre_act,
         layers=layers,
         dataset=dataset,
+        seed=args["seed"],
     )
     model = get_model(
         input_shape=input_shape,
