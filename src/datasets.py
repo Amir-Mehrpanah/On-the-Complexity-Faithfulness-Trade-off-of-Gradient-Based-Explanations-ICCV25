@@ -430,9 +430,9 @@ def get_fashion_mnist_dataset(root_path, img_size, **kwargs):
     img_size = 28 if img_size is None else img_size
     transform = torchvision.transforms.Compose(
         [
+            torchvision.transforms.ToTensor(),
             torchvision.transforms.Resize((img_size, img_size)),
             torchvision.transforms.Normalize(FASHION_MNIST_MEAN, FASHION_MNIST_STD),
-            torchvision.transforms.ToTensor(),
         ]
     )
 
@@ -481,9 +481,9 @@ def get_cifar10_dataset(root_path, img_size, add_inverse=False):
 def get_cifar10_train(root_path, img_size, add_inverse=False, label_transform=None):
     train_transform = torchvision.transforms.Compose(
         [
+            torchvision.transforms.ToTensor(),
             torchvision.transforms.Resize((img_size, img_size)),
             torchvision.transforms.RandomHorizontalFlip(),
-            torchvision.transforms.ToTensor(),
             (
                 AddInverse()
                 if add_inverse

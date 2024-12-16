@@ -32,7 +32,7 @@ class LossSwitch(ConvertableEnum):
 
 
 class ModelSwitch(ConvertableEnum):
-    MNIST_CONV_NET = 1000
+    SIMPLE_CNN_DEPTH = 1000
     SIMPLE_CNN = 1001
     SIMPLE_CNN_BN = 1007
     SIMPLE_CNN_SK = 1008

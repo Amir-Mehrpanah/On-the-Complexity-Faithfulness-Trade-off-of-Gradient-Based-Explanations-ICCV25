@@ -11,6 +11,7 @@ def get_model(
     activation_fn,
     bias,
     pre_act,
+    layers,
     **kwargs,
 ):
     if model_name in [
@@ -27,7 +28,6 @@ def get_model(
             ModelSwitch.SIMPLE_CNN_SK,
             ModelSwitch.SIMPLE_CNN_SK_BN,
         ]
-        layers = kwargs.get("layers", None)
         return SimpleConvSKBN(
             input_shape,
             num_classes,
@@ -36,10 +36,9 @@ def get_model(
             fc_bias=True,
             bn=bn,
             sk=sk,
-            layers=layers,
         )
 
-    if ModelSwitch.MNIST_CONV_NET == model_name:
+    if ModelSwitch.SIMPLE_CNN_DEPTH == model_name:
         return SimpleConvNet(
             input_shape,
             num_classes,
@@ -50,8 +49,6 @@ def get_model(
         )
 
     if ModelSwitch.RESNET_BASIC == model_name:
-        assert "layers" in kwargs, "layers must be provided for ResNetBasic"
-        layers = kwargs["layers"]
         return ResNet(
             BasicBlock,
             layers=layers,
@@ -64,8 +61,6 @@ def get_model(
         )
 
     if ModelSwitch.RESNET_BOTTLENECK == model_name:
-        assert "layers" in kwargs, "layers must be provided for ResNetBottleneck"
-        layers = kwargs["layers"]
         return ResNet(
             Bottleneck,
             layers=layers,
@@ -78,9 +73,6 @@ def get_model(
         )
 
     if ModelSwitch.RESNET18 == model_name:
-        assert (
-            "layers" not in kwargs
-        ), "layers must not be provided for ResNet18, it seems to be an error"
         return ResNet(
             BasicBlock,
             [2, 2, 2, 2],
@@ -93,9 +85,6 @@ def get_model(
         )
 
     if ModelSwitch.RESNET34 == model_name:
-        assert (
-            "layers" not in kwargs
-        ), "layers must not be provided for ResNet18, it seems to be an error"
         return ResNet(
             BasicBlock,
             [3, 4, 6, 3],
@@ -108,9 +97,6 @@ def get_model(
         )
 
     if ModelSwitch.RESNET50 == model_name:
-        assert (
-            "layers" not in kwargs
-        ), "layers must not be provided for ResNet18, it seems to be an error"
         return ResNet(
             Bottleneck,
             [3, 4, 6, 3],

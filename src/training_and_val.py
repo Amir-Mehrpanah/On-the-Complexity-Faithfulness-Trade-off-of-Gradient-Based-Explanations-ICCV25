@@ -157,6 +157,12 @@ def get_inputs():
         help="number of layers",
     )
     parser.add_argument(
+        "--warmup_epochs",
+        type=int,
+        default=0,
+        help="number of warmup epochs",
+    )
+    parser.add_argument(
         "--timeout",
         type=int,
         default=60,
@@ -247,6 +253,7 @@ def main(
     pre_act,
     gaussian_noise_var,
     layers,
+    warmup_epochs,
     device,
     **kwargs,
 ):
@@ -290,7 +297,6 @@ def main(
         f" pre_act {pre_act} gaussian_noise_var {gaussian_noise_var}"
     )
     old_test_acc = 0
-    warmup_epochs = 30
     for epoch in range(epochs):
         print(f"Epoch {epoch+1}\n-------------------------------")
         train_loss, train_acc = train(

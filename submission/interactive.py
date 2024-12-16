@@ -15,11 +15,11 @@ from src.utils import (
 )
 
 activations = [
-    # ActivationSwitch.RELU,
-    # ActivationSwitch.LEAKY_RELU,
+    ActivationSwitch.RELU,
+    ActivationSwitch.LEAKY_RELU,
     ActivationSwitch.SOFTPLUS_B_1,
-    # ActivationSwitch.SOFTPLUS_B1,
-    # ActivationSwitch.SOFTPLUS_B5,
+    ActivationSwitch.SOFTPLUS_B1,
+    ActivationSwitch.SOFTPLUS_B5,
 ]
 losses = [
     LossSwitch.CE,
@@ -30,8 +30,8 @@ add_inverses = [
     "",
 ]
 model_names = [
-    ModelSwitch.MNIST_CONV_NET
-    # ModelSwitch.SIMPLE_CNN, ## different depths L @1
+    ModelSwitch.SIMPLE_CNN_DEPTH  ## different depths L @1
+    # ModelSwitch.SIMPLE_CNN,
     # ModelSwitch.SIMPLE_CNN_BN,
     # ModelSwitch.SIMPLE_CNN_SK,
     # ModelSwitch.SIMPLE_CNN_SK_BN,
@@ -39,9 +39,10 @@ model_names = [
     # ModelSwitch.RESNET_BOTTLENECK,
 ]
 layerss = [
+    [1],
     [2],
-    # [3],
-    # [4],
+    [3],
+    [4],
     # [1, 1, 1, 1],
     # [2, 2, 2, 2],
     # [3, 3, 3, 3],
@@ -58,7 +59,7 @@ pre_acts = [
     # "--pre_act",
 ]
 
-if 1:  # debug
+if 0:  # debug
     port = "--port 5678"
     block_main = "--block_main"
     timeout = 10
@@ -80,9 +81,10 @@ batch_sizes = {
 }
 patience = 5
 lr = 1e-3
-l2_reg = 0.0
+l2_reg = 1e-4
 ckpt_mod = 5  # checkpoint if epoch % ckpt_mod == 0
-epochs = 100
+epochs = 20
+warmup_epochs = epochs // 4
 gaussian_noise_var = 0.01
 augmentations = [
     AugmentationSwitch.TRAIN,
@@ -118,7 +120,7 @@ for activation, loss, add_inverse, model_name, augmentation, pre_act, layers in 
         f" --tb_postfix {now}_{model_name}_{layers_tb}_{activation_tb}_{dataset_tb}"
         f" --patience {patience} --model_name {model_name}"
         f" --augmentation {augmentation} --gaussian_noise_var {gaussian_noise_var}"
-        f" --l2_reg {l2_reg} --timeout {timeout}"
+        f" --l2_reg {l2_reg} --timeout {timeout} --warmup_epochs {warmup_epochs}"
     )
     if output != 0:
         print(f"Error: {activation} {loss}")

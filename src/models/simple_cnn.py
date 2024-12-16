@@ -81,7 +81,6 @@ class SimpleConvSKBN(nn.Module):
         fc_bias,
         bn,
         sk,
-        layers,
     ):
         super().__init__()
         C, H, W = input_shape
