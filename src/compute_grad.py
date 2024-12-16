@@ -342,6 +342,7 @@ def main(
         add_inverse=add_inverse,
         pre_act=pre_act,
         layers=layers,
+        dataset=dataset,
     )
     model = get_model(
         input_shape=input_shape,

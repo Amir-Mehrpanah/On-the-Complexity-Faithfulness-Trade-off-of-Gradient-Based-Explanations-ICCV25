@@ -78,8 +78,9 @@ def get_experiment_prefix(
     add_inverse,
     pre_act,
     layers,
+    dataset,
 ):
-    return f"{model_name}_{layers}_{activation}"
+    return f"{dataset}_{model_name}_{layers}_{activation}"
 
 
 def get_save_path(

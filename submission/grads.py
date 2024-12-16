@@ -63,6 +63,7 @@ def main(args):
         add_inverse=args["add_inverse"],
         pre_act=args["pre_act"],
         layers=args["layers"],
+        dataset=args["dataset"],
     )
     move_output_compute_node(
         COMPUTE_OUTPUT_DIR,
