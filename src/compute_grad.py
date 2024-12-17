@@ -286,6 +286,7 @@ def save_state(
 
 
 def main(
+    *,
     root_path,
     output_dir,
     dataset,
@@ -307,6 +308,8 @@ def main(
     pre_act,
     layers,
     device,
+    seed,
+    l2_reg,
     **args,
 ):
     print(locals())
@@ -346,7 +349,9 @@ def main(
         pre_act=pre_act,
         layers=layers,
         dataset=dataset,
-        seed=args["seed"],
+        seed=seed,
+        l2_reg=l2_reg,
+        img_size=img_size,
     )
     model = get_model(
         input_shape=input_shape,

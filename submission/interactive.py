@@ -6,6 +6,8 @@ import os
 cwd = "/proj/azizpour-group/users/x_amime/projects/kernel-view-to-explainability/"
 os.chdir(cwd)
 
+from submission.utils import submit_training, submit_grads
+
 from datetime import datetime
 from src.utils import (
     ActivationSwitch,
@@ -15,23 +17,23 @@ from src.utils import (
     AugmentationSwitch,
 )
 
-seeds = [0]
-activations = [
+seed = [0]
+activation = [
     ActivationSwitch.RELU,
     ActivationSwitch.LEAKY_RELU,
     ActivationSwitch.SOFTPLUS_B_1,
     ActivationSwitch.SOFTPLUS_B1,
     ActivationSwitch.SOFTPLUS_B5,
 ]
-losses = [
+loss = [
     LossSwitch.CE,
     # LossSwitch.MSE
 ]
-add_inverses = [
-    # "--add_inverse",
-    "",
+add_inverse = [
+    # True,
+    False,
 ]
-model_names = [
+model_name = [
     ModelSwitch.SIMPLE_CNN_DEPTH  ## different depths L @1
     # ModelSwitch.SIMPLE_CNN,
     # ModelSwitch.SIMPLE_CNN_BN,
@@ -40,7 +42,7 @@ model_names = [
     # ModelSwitch.RESNET_BASIC,
     # ModelSwitch.RESNET_BOTTLENECK,
 ]
-layerss = [
+layers = [
     [1],
     [2],
     [3],
@@ -54,27 +56,38 @@ layerss = [
     # [1, 1, 6, 1],
     # [1, 1, 1, 6],
 ]
-dataset = DatasetSwitch.FASHION_MNIST  # MNIST ## D @4 @5
-bias = "--nobias"
-pre_acts = [
-    "",
-    # "--pre_act",
+dataset = [DatasetSwitch.FASHION_MNIST]
+bias = [False]
+pre_act = [
+    False,
+    # True,
 ]
 
 if 0:  # debug
-    port = "--port 5678"
-    block_main = "--block_main"
+    port = 5678
+    block_main = True
     timeout = 10
 else:
-    port = ""
-    block_main = ""
+    port = None
+    block_main = False
     timeout = 20
 
-num_workers = 16
-prefetch_factor = 8
-
+num_workers = [16]
+prefetch_factor = [8]
+img_size = [
+    28,
+    37,
+    46,
+    55,
+    64,
+]
+l2_reg = [
+    1e-2,
+    5e-3,
+    1e-3,
+]
 # %% submit training
-batch_sizes = {
+batch_size = {
     ActivationSwitch.RELU: 256,
     ActivationSwitch.LEAKY_RELU: 256,
     ActivationSwitch.SOFTPLUS_B_1: 256,
@@ -82,109 +95,99 @@ batch_sizes = {
     ActivationSwitch.SOFTPLUS_B5: 256,
 }
 
-patience = 5
-lr = 1e-3
-l2_reg = 1e-3
-ckpt_mod = 1  # checkpoint if epoch % ckpt_mod == 0
-epochs = 20
-warmup_epochs = epochs // 4
-gaussian_noise_var = 0.01
-augmentations = [
+patience = [5]
+lr = [1e-3]
+ckpt_mod = [1]  # checkpoint if epoch % ckpt_mod == 0
+epochs = [20]
+lr_decay_gamma = [0.98]
+warmup_epochs_ratio = 0.6
+gaussian_noise_var = [0.01]
+augmentation = [
     AugmentationSwitch.TRAIN,
 ]
-for (
-    activation,
-    loss,
-    add_inverse,
-    model_name,
-    augmentation,
-    pre_act,
-    layers,
-    seed,
-) in product(
-    activations,
-    losses,
-    add_inverses,
-    model_names,
-    augmentations,
-    pre_acts,
-    layerss,
-    seeds,
-):
-    torch.manual_seed(seed)
-    print(f"time: {datetime.now()}")
-    if len(layers) > 0:
-        layers_ = " ".join(map(str, layers))
-        layers_ = f"--layers {layers_}"
-        layers_tb = "_".join(map(str, layers))
-    else:
-        layers_ = ""
-        layers_tb = ""
-    activation_tb = activation.name
-    dataset_tb = dataset.name
-    now = datetime.now().strftime("%Y%m%d-%H")
-    batch_size_ = batch_sizes[activation]
-    output = os.system(
-        f"python submission/training.py {block_main}"
-        f" {port} --dataset {dataset} --ckpt_mod {ckpt_mod}"
-        f" {bias} --activation {activation} --loss {loss}"
-        f" --lr {lr} --epochs {epochs} --batch_size {batch_size_}"
-        f" {add_inverse} --num_workers {num_workers} {layers_}"
-        f" --prefetch_factor {prefetch_factor} {pre_act} --seed {seed}"
-        f" --tb_postfix {now}_{model_name}_{layers_tb}_{activation_tb}_{dataset_tb}"
-        f" --patience {patience} --model_name {model_name}"
-        f" --augmentation {augmentation} --gaussian_noise_var {gaussian_noise_var}"
-        f" --l2_reg {l2_reg} --timeout {timeout} --warmup_epochs {warmup_epochs}"
-    )
-    if output != 0:
-        print(f"Error: {activation} {loss}")
-        break
+
+submit_training(
+    seed=seed,
+    activation=activation,
+    loss=loss,
+    add_inverse=add_inverse,
+    model_name=model_name,
+    layers=layers,
+    dataset=dataset,
+    bias=bias,
+    pre_act=pre_act,
+    port=port,
+    block_main=block_main,
+    timeout=timeout,
+    num_workers=num_workers,
+    prefetch_factor=prefetch_factor,
+    batch_size=batch_size,
+    patience=patience,
+    lr=lr,
+    l2_reg=l2_reg,
+    ckpt_mod=ckpt_mod,
+    epochs=epochs,
+    warmup_epochs_ratio=warmup_epochs_ratio,
+    gaussian_noise_var=gaussian_noise_var,
+    augmentation=augmentation,
+    img_size=img_size,
+    lr_decay_gamma=lr_decay_gamma,
+)
 
 # %% submit grads
-num_batches = 4
-batch_sizes = {
+num_batches = [4]
+batch_size = {
     ActivationSwitch.RELU: 32,
     ActivationSwitch.LEAKY_RELU: 32,
     ActivationSwitch.SOFTPLUS_B_1: 32,
     ActivationSwitch.SOFTPLUS_B1: 32,
     ActivationSwitch.SOFTPLUS_B5: 32,
 }
-augmentations = [
+augmentation = [
     AugmentationSwitch.EXP_GEN,
 ]
-epoch = 0
-num_distinct_images = 25
-gaussian_noise_var = 1e-5
-for activation, add_inverse, model_name, augmentation, pre_act, layers in product(
-    activations,
-    add_inverses,
-    model_names,
-    augmentations,
-    pre_acts,
-    layerss,
-):
-    print(f"time: {datetime.now()}")
-    if len(layers) > 0:
-        layers_ = " ".join(map(str, layers))
-        layers_ = f"--layers {layers_}"
-    else:
-        layers_ = ""
+epoch = [0]
+num_distinct_images = [4]
+gaussian_noise_var = [1e-5]
+eval_only_on_test = [True]
+stats = [
+    {
+        "mean_rank": None,
+        "var_rank": None,
+        "mean": None,
+        "var": None,
+        "correct": None,
+        "image": None,
+        "label": None,
+        "batch_size": None,
+    }
+]
 
-    batch_size_ = batch_sizes[activation]
-    now = datetime.now().strftime("%Y%m%d-%H")
-    output = os.system(
-        f"python submission/grads.py {block_main}"
-        f" {port} --dataset {dataset} {bias} {pre_act}"
-        f" --activation {activation} --epoch {epoch} {layers_}"
-        f" --batch_size {batch_size_} --num_batches {num_batches}"
-        f" {add_inverse} --num_workers {num_workers} --augmentation {augmentation}"
-        f" --prefetch_factor {prefetch_factor} --model_name {model_name}"
-        f" --num_distinct_images {num_distinct_images} --eval_only_on_test"
-        f" --gaussian_noise_var {gaussian_noise_var} "
-    )
-    if output != 0:
-        print(f"Error: {activation} {model_name}")
-        break
+submit_grads(
+    timeout=timeout,
+    batch_size=batch_size,
+    activation=activation,
+    dataset=dataset,
+    model_name=model_name,
+    layers=layers,
+    img_size=img_size,
+    bias=bias,
+    port=port,
+    block_main=block_main,
+    num_workers=num_workers,
+    prefetch_factor=prefetch_factor,
+    gaussian_noise_var=gaussian_noise_var,
+    num_batches=num_batches,
+    add_inverse=add_inverse,
+    seed=seed,
+    augmentation=augmentation,
+    eval_only_on_test=eval_only_on_test,
+    pre_act=pre_act,
+    stats=stats,
+    epoch=epoch,
+    num_distinct_images=num_distinct_images,
+    l2_reg=l2_reg,
+)
 
 # %% extract the grad results
 os.system("bash src/ext.sh")

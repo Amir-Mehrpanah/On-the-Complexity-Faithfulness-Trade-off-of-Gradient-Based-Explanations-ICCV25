@@ -22,6 +22,8 @@ from src import training_and_val
 
 
 def main(args):
+    print(args)
+    
     if args["port"] is not None and args["port"] > 0:
         job_env = submitit.JobEnvironment()
         print(f"Debugger is running on node {job_env.hostname} port {args['port']}")

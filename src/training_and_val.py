@@ -300,7 +300,7 @@ def main(
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=lr_decay_gamma)
     print(
         f"Experimen model_name {model_name} activation {activation} layers {layers} "
-        f" loss {loss} bias {bias} add_inverse {add_inverse} "
+        f" loss {loss} bias {bias} add_inverse {add_inverse} l2_reg {l2_reg} "
         f"({batch_size},{input_shape}) augmentation {augmentation}"
         f" pre_act {pre_act} gaussian_noise_var {gaussian_noise_var}"
     )
@@ -344,6 +344,8 @@ def main(
                     layers=layers,
                     dataset=dataset,
                     seed=seed,
+                    l2_reg=l2_reg,
+                    img_size=img_size,
                 ),
             )
 

@@ -90,6 +90,8 @@ def get_experiment_prefix(
     name_list.append("_".join(map(str, kwargs["layers"])))
     name_list.append(kwargs["activation"])
     name_list.append(kwargs["seed"])
+    name_list.append(kwargs["l2_reg"])
+    name_list.append(kwargs["img_size"])
     return EXPERIMENT_PREFIX_SEP.join(map(str, name_list))
 
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Base directories
-src_dir=".tmp/outputs/*/*.tar"
+src_dir=".tmp/outputs/*/0.tar"
 dest_dir=".tmp/extracted"
 
 # Find all .tar files and process each one

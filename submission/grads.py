@@ -65,6 +65,8 @@ def main(args):
         layers=args["layers"],
         dataset=args["dataset"],
         seed=args["seed"],
+        l2_reg=args["l2_reg"],
+        img_size=args["img_size"],
     )
     move_output_compute_node(
         COMPUTE_OUTPUT_DIR,
