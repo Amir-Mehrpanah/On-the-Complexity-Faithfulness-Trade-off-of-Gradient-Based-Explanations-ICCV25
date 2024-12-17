@@ -53,25 +53,9 @@ def main(args):
         output_dir=COMPUTE_OUTPUT_DIR,
         **args,
     )
-
-    experiment_prefix = get_experiment_prefix(
-        model_name=args["model_name"],
-        activation=args["activation"],
-        augmentation=args["augmentation"],
-        bias=args["bias"],
-        epoch=args["epoch"],
-        add_inverse=args["add_inverse"],
-        pre_act=args["pre_act"],
-        layers=args["layers"],
-        dataset=args["dataset"],
-        seed=args["seed"],
-        l2_reg=args["l2_reg"],
-        img_size=args["img_size"],
-    )
     move_output_compute_node(
         COMPUTE_OUTPUT_DIR,
-        LOCAL_OUTPUT_DIR,
-        experiment_prefix,
+        args["experiment_output_dir"],
     )
 
 

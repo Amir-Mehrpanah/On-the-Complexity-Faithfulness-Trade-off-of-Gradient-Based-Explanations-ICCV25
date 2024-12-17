@@ -299,7 +299,6 @@ def main(
     model_name,
     activation,
     bias,
-    epoch,
     eval_only_on_test,
     num_distinct_images,
     num_batches,
@@ -308,8 +307,7 @@ def main(
     pre_act,
     layers,
     device,
-    seed,
-    l2_reg,
+    checkpoint_path,
     **args,
 ):
     print(locals())
@@ -339,20 +337,6 @@ def main(
     else:
         train_dataloader, test_dataloader, input_shape, num_classes = aux
 
-    checkpoint_filename = get_save_path(
-        model_name=model_name,
-        activation=activation,
-        augmentation=augmentation,
-        bias=bias,
-        epoch=epoch,
-        add_inverse=add_inverse,
-        pre_act=pre_act,
-        layers=layers,
-        dataset=dataset,
-        seed=seed,
-        l2_reg=l2_reg,
-        img_size=img_size,
-    )
     model = get_model(
         input_shape=input_shape,
         model_name=model_name,
@@ -364,7 +348,7 @@ def main(
         layers=layers,
     ).to(device)
 
-    checkpoint = torch.load(checkpoint_filename, map_location=device)
+    checkpoint = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(checkpoint)
     model.eval()
 

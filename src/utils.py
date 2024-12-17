@@ -73,25 +73,24 @@ EXPERIMENT_PREFIX_SEP = "::"
 
 
 def get_experiment_prefix(
-    **kwargs,
+    *,
+    dataset,
+    model_name,
+    layers,
+    activation,
+    seed,
+    l2_reg,
+    img_size,
+    **args,
 ):
-    # model_name,
-    # activation,
-    # augmentation,
-    # bias,
-    # epoch,
-    # add_inverse,
-    # pre_act,
-    # layers,
-    # dataset,
     name_list = []
-    name_list.append(kwargs["dataset"])
-    name_list.append(kwargs["model_name"])
-    name_list.append("_".join(map(str, kwargs["layers"])))
-    name_list.append(kwargs["activation"])
-    name_list.append(kwargs["seed"])
-    name_list.append(kwargs["l2_reg"])
-    name_list.append(kwargs["img_size"])
+    name_list.append(dataset)
+    name_list.append(model_name)
+    name_list.append("_".join(map(str, layers)))
+    name_list.append(activation)
+    name_list.append(seed)
+    name_list.append(l2_reg)
+    name_list.append(img_size)
     return EXPERIMENT_PREFIX_SEP.join(map(str, name_list))
 
 

@@ -1,14 +1,11 @@
 # %% imports
 import torch
-from itertools import product
 import os
 
 cwd = "/proj/azizpour-group/users/x_amime/projects/kernel-view-to-explainability/"
 os.chdir(cwd)
 
-from submission.utils import submit_training, submit_grads
-
-from datetime import datetime
+from submission.utils import submit_measurements, submit_training, submit_grads
 from src.utils import (
     ActivationSwitch,
     LossSwitch,
@@ -63,7 +60,7 @@ pre_act = [
     # True,
 ]
 
-if 0:  # debug
+if 1:  # debug
     port = 5678
     block_main = True
     timeout = 10
@@ -88,13 +85,13 @@ l2_reg = [
 ]
 # %% submit training
 batch_size = {
-    ActivationSwitch.RELU: 256,
-    ActivationSwitch.LEAKY_RELU: 256,
-    ActivationSwitch.SOFTPLUS_B_1: 256,
-    ActivationSwitch.SOFTPLUS_B1: 256,
-    ActivationSwitch.SOFTPLUS_B5: 256,
+    ActivationSwitch.RELU: 512,
+    ActivationSwitch.LEAKY_RELU: 512,
+    ActivationSwitch.SOFTPLUS_B_1: 512,
+    ActivationSwitch.SOFTPLUS_B1: 512,
+    ActivationSwitch.SOFTPLUS_B5: 512,
 }
-
+min_test_acc = [0.5]
 patience = [5]
 lr = [1e-3]
 ckpt_mod = [1]  # checkpoint if epoch % ckpt_mod == 0
@@ -132,6 +129,7 @@ submit_training(
     augmentation=augmentation,
     img_size=img_size,
     lr_decay_gamma=lr_decay_gamma,
+    min_test_acc=min_test_acc,
 )
 
 # %% submit grads
@@ -147,7 +145,7 @@ augmentation = [
     AugmentationSwitch.EXP_GEN,
 ]
 epoch = [0]
-num_distinct_images = [4]
+num_distinct_images = [1000]
 gaussian_noise_var = [1e-5]
 eval_only_on_test = [True]
 stats = [
@@ -189,6 +187,16 @@ submit_grads(
     l2_reg=l2_reg,
 )
 
+
+# %% run measurements on grads
+submit_measurements(
+    timeout=timeout,
+    port=port,
+    block_main=block_main,
+    num_workers=num_workers,
+    prefetch_factor=prefetch_factor,
+)
+
 # %% extract the grad results
 os.system("bash src/ext.sh")
 
@@ -206,34 +214,6 @@ os.chdir(cwd)
 # !rm -r logs/12*
 # !rm -r .tmp/extracted/*
 # !rm -r .tmp/outputs/*
-
-
-# %% run measurements on grads
-for activation, add_inverse, model_name, augmentation, pre_act, layers in product(
-    activations,
-    add_inverses,
-    model_names,
-    augmentations,
-    pre_acts,
-    layerss,
-):
-    print(f"time: {datetime.now()}")
-    if len(layers) > 0:
-        layers_ = " ".join(map(str, layers))
-        layers_ = f"--layers {layers_}"
-    else:
-        layers_ = ""
-
-    batch_size_ = batch_sizes[activation]
-    now = datetime.now().strftime("%Y%m%d-%H")
-    output = os.system(
-        f"python submission/quant_measures_grads.py "
-        f" {port} {block_main}"
-        f" --num_workers {num_workers} --prefetch_factor {prefetch_factor}"
-    )
-    if output != 0:
-        print(f"Error: {activation} {model_name}")
-        break
 
 # %% visualize
 import torch

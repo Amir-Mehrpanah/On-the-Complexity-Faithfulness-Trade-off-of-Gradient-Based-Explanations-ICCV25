@@ -262,6 +262,8 @@ def main(
     warmup_epochs,
     seed,
     device,
+    min_test_acc,
+    checkpoint_path,
     **kwargs,
 ):
     torch.manual_seed(seed)
@@ -305,6 +307,7 @@ def main(
         f" pre_act {pre_act} gaussian_noise_var {gaussian_noise_var}"
     )
     old_test_acc = 0
+    saved_any_checkpoint = False
     for epoch in range(epochs):
         print(f"Epoch {epoch+1}\n-------------------------------")
         train_loss, train_acc = train(
@@ -330,23 +333,12 @@ def main(
             test_acc,
             old_test_acc,
             warmup_epochs,
+            min_test_acc,
         ):
+            saved_any_checkpoint = True
             save_pth(
                 model,
-                path=get_save_path(
-                    model_name=model_name,
-                    activation=activation,
-                    augmentation=augmentation,
-                    bias=bias,
-                    epoch=epoch,
-                    add_inverse=add_inverse,
-                    pre_act=pre_act,
-                    layers=layers,
-                    dataset=dataset,
-                    seed=seed,
-                    l2_reg=l2_reg,
-                    img_size=img_size,
-                ),
+                path=checkpoint_path,
             )
 
         scheduler.step()
@@ -361,17 +353,32 @@ def main(
             patience_counter = patience
         old_test_acc = test_acc
 
+    if not saved_any_checkpoint:
+        print(
+            "No checkpoints saved for ",
+            checkpoint_path,
+        )
 
-def save_ckpt_criteria(ckpt_mod, epoch, test_acc, old_test_acc, warmup_epochs):
+    return test_acc
+
+
+def save_ckpt_criteria(
+    ckpt_mod,
+    epoch,
+    test_acc,
+    old_test_acc,
+    warmup_epochs,
+    min_test_acc,
+):
     return (
         (epoch % ckpt_mod == 0)
         and (epoch > warmup_epochs)
         and (test_acc > old_test_acc)
+        and (test_acc > min_test_acc)
     )
 
 
 if __name__ == "__main__":
     # INPUT VARS
     args = get_inputs()
-
     main(**args)

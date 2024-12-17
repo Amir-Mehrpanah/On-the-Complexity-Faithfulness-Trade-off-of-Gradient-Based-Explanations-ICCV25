@@ -39,6 +39,9 @@ def get_inputs():
     args = vars(args)
     return args
 
+def measure_grads(data):
+    return {"sum_grads": data.grad.sum().item()}
+
 
 def main(
     *,
@@ -58,8 +61,6 @@ def main(
     )
     measurements = []
     for data in dataloader:
-        compute_grads(data)
         measurements.append(measure_grads(data))
 
-
-    pd.DataFrame(measurements).to_csv("grads.csv") # make sure the path is local
+    return measurements

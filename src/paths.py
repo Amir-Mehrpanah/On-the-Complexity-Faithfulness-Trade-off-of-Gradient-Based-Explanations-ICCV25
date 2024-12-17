@@ -9,6 +9,7 @@ IMAGENETTE_ROOT = f"{DATASETS_COMMON}/imagenette2.tgz"
 
 COMPUTE_OUTPUT_DIR = "/scratch/local/outputs/"
 LOCAL_OUTPUT_DIR = f"{WORKDIR}/.tmp/outputs/"
+LOCAL_QUANTS_DIR = f"{WORKDIR}/.tmp/quants/"
 
 
 def get_local_data_dir(dataset):
