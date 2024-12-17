@@ -567,16 +567,14 @@ class GradsDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         file_path = self.files[idx]
-        parent_dir = os.path.basename(os.path.dirname(file_path))
-        extra_vars = parent_dir.split(EXPERIMENT_PREFIX_SEP)
         data = torch.load(file_path)
-        data["address"] = extra_vars
+        data["address"] = file_path
         return data
 
     def __len__(self):
         return len(self.files)
 
-
+@register_dataset(DatasetSwitch.GRADS)
 def get_grad_dataloader(root_path, num_workers, prefetch_factor):
     data = GradsDataset(root_path)
     dataloader = DataLoader(

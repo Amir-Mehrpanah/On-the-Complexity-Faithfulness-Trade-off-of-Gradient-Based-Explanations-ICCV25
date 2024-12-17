@@ -1,8 +1,8 @@
-import pandas as pd
 import submitit
 import os
 import sys
 import debugpy
+import torch
 
 # vscode changes the cwd to the file's directory, so we need to add the workspace to the path
 # Set the working directory to the base of the workspace
@@ -18,6 +18,15 @@ from src.datasets import (
 )
 from src.utils import determine_device
 from src import quant_measures_grads
+
+
+def extract_the_grads_dataset_on_compute_node(COMPUTE_DATA_DIR, EXT, TARGET_DIR):
+    extract_the_dataset_on_compute_node(COMPUTE_DATA_DIR, EXT, TARGET_DIR)
+
+    # extract the sub directories
+    os.system(
+        f'ls {TARGET_DIR} | xargs -I {{}} -P 16 sh -c "tar -xf {TARGET_DIR}/{{}}/*.tar -C {TARGET_DIR}/{{}}"'
+    )
 
 
 def main(args):
@@ -44,22 +53,17 @@ def main(args):
 
     os.system("module load Fpart/1.5.1-gcc-8.5.0")
 
-    move_data_to_compute_node(LOCAL_OUTPUT_DIR, EXT == "tgz", COMPUTE_DATA_DIR)
+    move_data_to_compute_node(DATA_DIR, EXT == "tgz", COMPUTE_DATA_DIR)
 
-    extract_the_dataset_on_compute_node(COMPUTE_DATA_DIR, EXT, TARGET_DIR)
+    extract_the_grads_dataset_on_compute_node(COMPUTE_DATA_DIR, EXT, TARGET_DIR)
 
     print("Running main job...")
     print(f"Data is in {COMPUTE_DATA_DIR_BASE_DIR}")
     results = quant_measures_grads.main(
-        root_path=COMPUTE_DATA_DIR,
+        root_path=TARGET_DIR,
+        output_dir=paths.LOCAL_QUANTS_DIR,
         **args,
     )
 
     os.makedirs(paths.LOCAL_QUANTS_DIR, exist_ok=True)
-    pd.DataFrame(results).to_csv(
-        os.path.join(
-            paths.LOCAL_QUANTS_DIR,
-            "quants.csv",
-        ),
-        index=False,
-    )
+    torch.save(results, os.path.join(paths.LOCAL_QUANTS_DIR, "quants.pt"))

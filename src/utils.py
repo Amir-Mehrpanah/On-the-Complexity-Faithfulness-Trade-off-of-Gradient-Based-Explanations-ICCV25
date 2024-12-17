@@ -61,7 +61,7 @@ class DatasetSwitch(ConvertableEnum):
     MNIST = 201
     IMAGENETTE = 202
     FASHION_MNIST = 203
-
+    GRADS = 299
 
 class AugmentationSwitch(ConvertableEnum):
     EXP_VIS = 1  # used in exaplanation methods for visualizing the original image

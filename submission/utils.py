@@ -3,7 +3,11 @@ from itertools import product
 import os
 import submitit
 import pandas as pd
+import torch
 from src import paths
+import matplotlib.pyplot as plt
+import numpy as np
+from glob import glob
 from submission import training, grads, quant
 from src.utils import get_experiment_prefix, get_save_path
 
@@ -46,7 +50,9 @@ def submit_training(
     valid_args["block_main"] = block_main
     valid_args["timeout"] = timeout
     valid_args["batch_size"] = valid_args["activation"].map(batch_size)
-    valid_args["warmup_epochs"] = (valid_args["epochs"] * warmup_epochs_ratio).astype(int)
+    valid_args["warmup_epochs"] = (valid_args["epochs"] * warmup_epochs_ratio).astype(
+        int
+    )
 
     return execute_job_submission(block_main, port, timeout, valid_args, training.main)
 
@@ -126,10 +132,17 @@ def submit_measurements(
     args["block_main"] = block_main
     args["timeout"] = timeout
 
-    return execute_job_submission(block_main, port, timeout, args, quant.main)
+    return execute_job_submission(
+        block_main,
+        port,
+        timeout,
+        args,
+        quant.main,
+        num_gpus=0,
+    )
 
 
-def execute_job_submission(block_main, port, timeout, args, func):
+def execute_job_submission(block_main, port, timeout, args, func, num_gpus=1):
     jobs_args = args.to_dict(orient="records")
 
     repr_args = args.copy()
@@ -156,7 +169,7 @@ def execute_job_submission(block_main, port, timeout, args, func):
         slurm_additional_parameters={
             "constraint": "thin",
             "reservation": "safe",
-            "gpus": 1,
+            "gpus": num_gpus,
         },
     )
 
@@ -172,3 +185,29 @@ def execute_job_submission(block_main, port, timeout, args, func):
             results = [job.result() for job in jobs]
             print("All jobs finished")
             return results
+
+
+def visualize_hooks(hook_samples, keys):
+    for j in hook_samples[0]:
+        os.makedirs(f".tmp/visualizations/{j}", exist_ok=True)
+        glob_path = f".tmp/quants/hooks/*/{j}.pt"
+        paths = glob(glob_path)
+        print(glob_path, len(paths))
+        for path in paths:
+            data = torch.load(path)
+            corrects = data["correct"]
+            batch_size = data["batch_size"]
+            print(os.path.basename(glob_path), "corrects", corrects, batch_size)
+            prefix = path.split("/")[-2]
+            for key in keys:
+                if key == "image":
+                    if os.path.exists(f".tmp/visualizations/{j}/{key}.png"):
+                        continue
+                    temp = np.transpose(data[key], (1, 2, 0))
+                    plt.imshow(temp)
+                    plt.savefig(f".tmp/visualizations/{j}/{key}.png")
+                else:
+                    temp = data[key]
+                    plt.imshow(temp)
+                    plt.savefig(f".tmp/visualizations/{j}/{key}_{prefix}.png")
+                plt.close()

@@ -5,7 +5,12 @@ import os
 cwd = "/proj/azizpour-group/users/x_amime/projects/kernel-view-to-explainability/"
 os.chdir(cwd)
 
-from submission.utils import submit_measurements, submit_training, submit_grads
+from submission.utils import (
+    submit_measurements,
+    submit_training,
+    submit_grads,
+    visualize_hooks,
+)
 from src.utils import (
     ActivationSwitch,
     LossSwitch,
@@ -31,7 +36,7 @@ add_inverse = [
     False,
 ]
 model_name = [
-    ModelSwitch.SIMPLE_CNN_DEPTH  ## different depths L @1
+    ModelSwitch.SIMPLE_CNN_DEPTH
     # ModelSwitch.SIMPLE_CNN,
     # ModelSwitch.SIMPLE_CNN_BN,
     # ModelSwitch.SIMPLE_CNN_SK,
@@ -60,7 +65,7 @@ pre_act = [
     # True,
 ]
 
-if 1:  # debug
+if 0:  # debug
     port = 5678
     block_main = True
     timeout = 10
@@ -189,16 +194,19 @@ submit_grads(
 
 
 # %% run measurements on grads
+hook_samples = [[15, 13]]
 submit_measurements(
+    dataset=[DatasetSwitch.GRADS],
     timeout=timeout,
     port=port,
     block_main=block_main,
     num_workers=num_workers,
     prefetch_factor=prefetch_factor,
+    hook_samples=hook_samples,
 )
 
 # %% extract the grad results
-os.system("bash src/ext.sh")
+# os.system("bash src/ext.sh")
 
 # %% remove stuff
 import os
@@ -216,34 +224,8 @@ os.chdir(cwd)
 # !rm -r .tmp/outputs/*
 
 # %% visualize
-import torch
-import matplotlib.pyplot as plt
-import numpy as np
-from glob import glob
-
 keys = ["var", "mean", "var_rank", "mean_rank", "image"]
-
-for j in range(4):
-    os.makedirs(f"visualizations/{j}", exist_ok=True)
-    glob_path = f"{cwd}.tmp/extracted/*/outputs_{j}.pt"
-    for path in glob(glob_path):
-        data = torch.load(path)
-        corrects = data["correct"]
-        batch_size = data["batch_size"]
-        print(os.path.basename(glob_path), "corrects", corrects, batch_size)
-        prefix = path.split("/")[-2]
-        for key in keys:
-            if key == "image":
-                if os.path.exists(f"visualizations/{j}/{key}.png"):
-                    continue
-                temp = np.transpose(data[key], (1, 2, 0))
-                plt.imshow(temp)
-                plt.savefig(f"visualizations/{j}/{key}.png")
-            else:
-                temp = data[key]
-                plt.imshow(temp)
-                plt.savefig(f"visualizations/{j}/{key}_{prefix}.png")
-            plt.close()
+visualize_hooks(hook_samples, keys)
 
 # %% debug
 import os
