@@ -65,7 +65,7 @@ pre_act = [
     # True,
 ]
 
-if 0:  # debug
+if 1:  # debug
     port = 5678
     block_main = True
     timeout = 10
@@ -205,6 +205,10 @@ submit_measurements(
     hook_samples=hook_samples,
 )
 
+# %% visualize
+keys = ["var", "mean", "var_rank", "mean_rank", "image"]
+visualize_hooks(hook_samples, keys)
+
 # %% extract the grad results
 # os.system("bash src/ext.sh")
 
@@ -222,10 +226,6 @@ os.chdir(cwd)
 # !rm -r logs/12*
 # !rm -r .tmp/extracted/*
 # !rm -r .tmp/outputs/*
-
-# %% visualize
-keys = ["var", "mean", "var_rank", "mean_rank", "image"]
-visualize_hooks(hook_samples, keys)
 
 # %% debug
 import os

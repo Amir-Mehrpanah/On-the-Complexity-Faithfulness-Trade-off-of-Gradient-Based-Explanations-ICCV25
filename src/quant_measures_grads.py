@@ -1,9 +1,63 @@
 import os
+
+import numpy as np
 from src.datasets import get_grad_dataloader
 
 
+def cosine_similarity(data):
+    return (data["mean_rank"] * data["var_rank"]).sum() / (
+        data["var_rank"].sum() * data["mean_rank"].sum()
+    )
+
+
+def spectral_density(image):
+    if image.ndim == 3:
+        image = image.squeeze(0)
+    # Step 1: Compute the 2D Fourier Transform of the image
+    ft_image = np.fft.fft2(image)
+    ft_magnitude = np.abs(ft_image) ** 2  # Power spectrum (magnitude squared)
+
+    # Step 2: Shift zero frequencies to the center
+    ft_magnitude_shifted = np.fft.fftshift(ft_magnitude)
+
+    # Step 3: Generate radial distances for the spectrum
+    center = np.array(ft_magnitude_shifted.shape) // 2
+    y, x = np.indices(ft_magnitude_shifted.shape)
+    r = np.sqrt((x - center[1]) ** 2 + (y - center[0]) ** 2)
+    r = r.astype(np.int32)
+
+    # Step 4: Radial average
+    radial_sum = np.bincount(r.ravel(), ft_magnitude_shifted.ravel())
+    radial_count = np.bincount(r.ravel())
+    radial_profile = radial_sum / radial_count  # Average power in each radius
+
+    return radial_profile
+
+
 def measure_grads(data):
-    return {"sum_grads": data["mean_rank"].sum().item()}
+    results = {
+        "cosine_similarity": cosine_similarity(data),
+        "mr_spectral_density": spectral_density(data["mean_rank"]),
+        "vr_spectral_density": spectral_density(data["var_rank"]),
+    }
+    # dropping zeroth element
+    results["mr_spectral_density"] = results["mr_spectral_density"][1:]
+    results["vr_spectral_density"] = results["vr_spectral_density"][1:]
+    # normalizing
+    results["mr_spectral_density"] = (
+        results["mr_spectral_density"] / results["mr_spectral_density"].sum()
+    )
+    results["vr_spectral_density"] = (
+        results["vr_spectral_density"] / results["vr_spectral_density"].sum()
+    )
+    freq = np.arange(1, len(results["mr_spectral_density"]) + 1)
+    results["mr_expected_spectral_density"] = (
+        freq * results["mr_spectral_density"]
+    ).mean()
+    results["vr_expected_spectral_density"] = (
+        freq * results["vr_spectral_density"]
+    ).mean()
+    return results
 
 
 def main(
