@@ -277,7 +277,7 @@ def main(
             root_path,
             batch_size,
             img_size=img_size,
-            augmentation=augmentation,
+            augmentation=AugmentationSwitch.TRAIN,
             add_inverse=add_inverse,
             num_workers=num_workers,
             prefetch_factor=prefetch_factor,

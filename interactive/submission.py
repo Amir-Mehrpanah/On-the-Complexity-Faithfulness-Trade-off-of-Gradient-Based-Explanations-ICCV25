@@ -104,9 +104,6 @@ epochs = [20]
 lr_decay_gamma = [0.98]
 warmup_epochs_ratio = 0.6
 gaussian_noise_var = [0.01]
-augmentation = [
-    AugmentationSwitch.TRAIN,
-]
 
 submit_training(
     seed=seed,
@@ -131,7 +128,6 @@ submit_training(
     epochs=epochs,
     warmup_epochs_ratio=warmup_epochs_ratio,
     gaussian_noise_var=gaussian_noise_var,
-    augmentation=augmentation,
     img_size=img_size,
     lr_decay_gamma=lr_decay_gamma,
     min_test_acc=min_test_acc,
@@ -146,9 +142,6 @@ batch_size = {
     ActivationSwitch.SOFTPLUS_B1: 64,
     ActivationSwitch.SOFTPLUS_B5: 64,
 }
-augmentation = [
-    AugmentationSwitch.EXP_GEN,
-]
 epoch = [0]
 num_distinct_images = [100]
 gaussian_noise_var = [1e-5, 1e-4, 1e-3, 1e-2, 1e-1]
@@ -183,7 +176,6 @@ submit_grads(
     num_batches=num_batches,
     add_inverse=add_inverse,
     seed=seed,
-    augmentation=augmentation,
     eval_only_on_test=eval_only_on_test,
     pre_act=pre_act,
     stats=stats,

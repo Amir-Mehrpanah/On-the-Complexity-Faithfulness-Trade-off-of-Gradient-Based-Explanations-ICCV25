@@ -375,12 +375,12 @@ def main(
 
     if eval_only_on_test:
         exp_gen_test_dataloader, input_shape, num_classes = exp_gen_loaders
-        test_dataloader, input_shape, num_classes = clean_gen_loaders
+        test_dataloader, _, _ = clean_gen_loaders
     else:
         exp_gen_train_dataloader, exp_gen_test_dataloader, input_shape, num_classes = (
             exp_gen_loaders
         )
-        train_dataloader, test_dataloader, input_shape, num_classes = clean_gen_loaders
+        train_dataloader, test_dataloader, _, _ = clean_gen_loaders
 
     model = get_model(
         input_shape=input_shape,
