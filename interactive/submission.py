@@ -65,7 +65,7 @@ pre_act = [
     # True,
 ]
 
-if 0:  # debug
+if 1:  # debug
     port = 5678
     block_main = True
     timeout = 10

@@ -151,17 +151,19 @@ def execute_job_submission(block_main, port, timeout, args, func, num_gpus=1):
     nunique = repr_args.nunique()
     print(nunique)
     print("total num of jobs", len(args))
+    if len(args) == 0:
+        print("No jobs to run exiting")
+        return
 
     if port != None:
         print("Running only the first job because of the debug flag")
         jobs_args = [jobs_args[0]]
-    if len(args) == 0:
-        print("No jobs to run exiting")
-        return
+        
     print("Do you want to continue? [y/n]")
     if input() != "y":
         print("Aborted")
         return
+    
     print("submitting jobs")
     executor = submitit.AutoExecutor(folder="logs/%j")
     executor.update_parameters(

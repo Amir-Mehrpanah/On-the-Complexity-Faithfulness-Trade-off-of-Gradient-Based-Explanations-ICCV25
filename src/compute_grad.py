@@ -158,28 +158,48 @@ def get_inputs():
 def forward_single(
     x,
     model,
+    target_class,
 ):
     output = model(x)
     output = output - output.logsumexp(dim=-1, keepdim=True)
-    return output.max(), output
+    return output[:, target_class].squeeze(0), output
 
 
-def forward_single_grad(model, x):
+def get_target_class(
+    x,
+    model,
+):
+    output = model(x)
+    output = output - output.logsumexp(dim=-1, keepdim=True)
+    target_label = output.argmax(-1).squeeze(0)
+    return target_label
+
+
+def forward_single_grad(model, x, target_class):
     # assert that we have only one image
     assert x.ndim == 3, "x should have shape (C, H, W)"
     x = x.unsqueeze(0)  # (1, C, H, W)
-    grad, output = torch.func.grad(forward_single, has_aux=True)(x, model)
+    grad, output = torch.func.grad(forward_single, has_aux=True)(x, model, target_class)
     grad = grad.squeeze(0)  # (C, H, W)
     output = output.squeeze(0)  # (num_classes,)
     return grad, output
 
 
-def forward_batch_grad(model, x):
-    return torch.func.vmap(forward_single_grad, in_dims=(None, 0), out_dims=0)(model, x)
+def forward_batch_grad(model, x, target_class):
+    return torch.func.vmap(
+        forward_single_grad,
+        in_dims=(None, 0),
+        out_dims=0,
+    )(
+        model,
+        x,
+        target_class,
+    )
 
 
 def compute_grad_and_save(
-    dataloader,
+    clean_dataloader,
+    noisy_dataloader,
     model,
     num_distinct_images,
     num_batches,
@@ -191,11 +211,16 @@ def compute_grad_and_save(
     grad_means = []
     grad_vars = []
     corrects = []
+    iter_loader = iter(clean_dataloader)
     print("Starting to compute grads")
-    for i, (x, y) in enumerate(dataloader):
+    for i, (x, y) in enumerate(noisy_dataloader):
         x, y = x.to(device), y.to(device)
 
-        grad, output = forward_batch_grad(model, x)
+        if i % num_batches == 0:
+            x_clean, y_clean = next(iter_loader)
+            target_class = get_target_class(x_clean, model)
+
+        grad, output = forward_batch_grad(model, x, target_class)
         grad = grad**2
 
         correct = ((output.argmax(-1) == y).sum() / y.shape[0]).detach().cpu()
@@ -296,7 +321,6 @@ def main(
     dataset,
     batch_size,
     img_size,
-    augmentation,
     add_inverse,
     num_workers,
     prefetch_factor,
@@ -321,7 +345,7 @@ def main(
         datasource=datasource,
         num_repeats=batch_size * num_batches,
     )
-    aux = get_training_and_test_dataloader(
+    exp_gen_loaders = get_training_and_test_dataloader(
         dataset,
         root_path,
         batch_size,
@@ -331,15 +355,32 @@ def main(
         shuffle=False,
         sampler=sampler,
         img_size=img_size,
-        augmentation=augmentation,
+        augmentation=AugmentationSwitch.EXP_GEN,
         add_inverse=add_inverse,
         gaussian_noise_var=gaussian_noise_var,
     )
+    clean_gen_loaders = get_training_and_test_dataloader(
+        dataset,
+        root_path,
+        batch_size=1,
+        num_workers=num_workers,
+        prefetch_factor=prefetch_factor,
+        get_only_test=eval_only_on_test,
+        shuffle=False,
+        img_size=img_size,
+        augmentation=AugmentationSwitch.EXP_GEN,
+        add_inverse=add_inverse,
+        gaussian_noise_var=0,
+    )
 
     if eval_only_on_test:
-        test_dataloader, input_shape, num_classes = aux
+        exp_gen_test_dataloader, input_shape, num_classes = exp_gen_loaders
+        test_dataloader, input_shape, num_classes = clean_gen_loaders
     else:
-        train_dataloader, test_dataloader, input_shape, num_classes = aux
+        exp_gen_train_dataloader, exp_gen_test_dataloader, input_shape, num_classes = (
+            exp_gen_loaders
+        )
+        train_dataloader, test_dataloader, input_shape, num_classes = clean_gen_loaders
 
     model = get_model(
         input_shape=input_shape,
@@ -358,6 +399,7 @@ def main(
 
     compute_grad_and_save(
         test_dataloader,
+        exp_gen_test_dataloader,
         model,
         num_distinct_images,
         num_batches,
