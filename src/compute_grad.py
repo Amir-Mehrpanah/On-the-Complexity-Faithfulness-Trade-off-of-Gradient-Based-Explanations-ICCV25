@@ -186,6 +186,7 @@ def compute_grad_and_save(
     output_dir,
     stats,
     device,
+    gaussian_noise_var,
 ):
     grad_means = []
     grad_vars = []
@@ -215,6 +216,7 @@ def compute_grad_and_save(
                 i,
                 x,
                 y,
+                gaussian_noise_var,
                 stats,
             )
 
@@ -241,6 +243,7 @@ def save_state(
     index,
     x,
     y,
+    gaussian_noise_var,
     stats,
 ):
     grad_means = torch.stack(grad_means)
@@ -278,6 +281,7 @@ def save_state(
     if "batch_size" in stats:
         stats["batch_size"] = x.shape[0] * num_batches
 
+    stats["noise_scale"] = gaussian_noise_var
     stats["index"] = index // num_batches
     torch.save(
         stats,
@@ -360,6 +364,7 @@ def main(
         output_dir,
         stats,
         device,
+        gaussian_noise_var,
     )
     if eval_only_on_test:
         return

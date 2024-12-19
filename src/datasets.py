@@ -1,3 +1,4 @@
+import copy
 import os
 import torchvision.datasets as datasets
 from torch.utils.data import DataLoader
@@ -300,7 +301,7 @@ def get_imagenette_train(
         augmentation, AugmentationSwitch
     ), f"Augmentation must be an enum of type AugmentationSwitch"
 
-    augmentations = get_aug(
+    augmentations = get_aug_imagenette(
         img_size,
         augmentation,
         add_inverse,
@@ -308,16 +309,10 @@ def get_imagenette_train(
         "train",
     )
 
-    train_transform = torchvision.transforms.Compose(
-        [
-            torchvision.transforms.ToTensor(),
-            *augmentations,
-        ]
-    )
     training_data = datasets.Imagenette(
         root=root_path,
         split="train",
-        transform=train_transform,
+        transform=augmentations,
         target_transform=label_transform,
         download=False,
     )
@@ -325,10 +320,11 @@ def get_imagenette_train(
     return training_data
 
 
-def get_aug(img_size, augmentation, add_inverse, gaussian_noise_var, split):
+def get_aug_imagenette(img_size, augmentation, add_inverse, gaussian_noise_var, split):
     if augmentation == AugmentationSwitch.TRAIN:
         if split == "train":
             augmentations = (
+                torchvision.transforms.ToTensor(),
                 torchvision.transforms.RandomResizedCrop(img_size),
                 torchvision.transforms.RandomChoice(
                     [
@@ -358,6 +354,7 @@ def get_aug(img_size, augmentation, add_inverse, gaussian_noise_var, split):
             )
         elif split == "test":
             augmentations = (
+                torchvision.transforms.ToTensor(),
                 torchvision.transforms.Resize((img_size, img_size)),
                 (
                     # ablation of Bcos
@@ -373,6 +370,7 @@ def get_aug(img_size, augmentation, add_inverse, gaussian_noise_var, split):
 
     elif augmentation == AugmentationSwitch.EXP_GEN:
         augmentations = (
+            torchvision.transforms.ToTensor(),
             torchvision.transforms.Resize((img_size, img_size)),
             (
                 # ablation of Bcos
@@ -383,8 +381,11 @@ def get_aug(img_size, augmentation, add_inverse, gaussian_noise_var, split):
             GaussianISONoise(gaussian_noise_var),
         )
     if augmentation == AugmentationSwitch.EXP_VIS:
-        augmentations = (torchvision.transforms.Resize((img_size, img_size)),)
-
+        augmentations = (
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Resize((img_size, img_size)),
+        )
+    augmentations = torchvision.transforms.Compose(augmentations)
     return augmentations
 
 
@@ -400,7 +401,7 @@ def get_imagenette_test(
         augmentation, AugmentationSwitch
     ), f"Augmentation must be an enum of type AugmentationSwitch"
 
-    augmentations = get_aug(
+    augmentations = get_aug_imagenette(
         img_size,
         augmentation,
         add_inverse,
@@ -408,17 +409,10 @@ def get_imagenette_test(
         "test",
     )
 
-    test_transform = torchvision.transforms.Compose(
-        [
-            torchvision.transforms.ToTensor(),
-            *augmentations,
-        ]
-    )
-
     test_data = datasets.Imagenette(
         root=root_path,
         split="val",
-        transform=test_transform,
+        transform=augmentations,
         target_transform=label_transform,
         download=False,
     )
@@ -427,14 +421,20 @@ def get_imagenette_test(
 
 
 @register_dataset(DatasetSwitch.FASHION_MNIST)
-def get_fashion_mnist_dataset(root_path, img_size, **kwargs):
+def get_fashion_mnist_dataset(
+    root_path,
+    img_size,
+    add_inverse,
+    gaussian_noise_var,
+    augmentation=AugmentationSwitch.TRAIN,
+    label_transform=None,
+):
     img_size = 28 if img_size is None else img_size
-    transform = torchvision.transforms.Compose(
-        [
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Resize((img_size, img_size)),
-            torchvision.transforms.Normalize(FASHION_MNIST_MEAN, FASHION_MNIST_STD),
-        ]
+    test_transform, train_transform = get_aug_fmnist(
+        img_size,
+        add_inverse,
+        gaussian_noise_var,
+        augmentation,
     )
 
     label_dtype = torch.float32
@@ -444,7 +444,7 @@ def get_fashion_mnist_dataset(root_path, img_size, **kwargs):
         root=root_path,
         train=True,
         download=False,
-        transform=transform,
+        transform=train_transform,
         target_transform=label_transform,
     )
 
@@ -452,45 +452,65 @@ def get_fashion_mnist_dataset(root_path, img_size, **kwargs):
         root=root_path,
         train=False,
         download=False,
-        transform=transform,
+        transform=test_transform,
         target_transform=label_transform,
     )
 
     return training_data, test_data
 
 
+def get_aug_fmnist(
+    img_size,
+    add_inverse,
+    gaussian_noise_var,
+    augmentation,
+):
+    if augmentation == AugmentationSwitch.EXP_VIS:
+        test_transform = [
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Resize((img_size, img_size)),
+        ]
+        train_transform = test_transform.copy()
+        if add_inverse:
+            raise NotImplementedError("AddInverse not implemented for FashionMNIST")
+    else:
+        test_transform = [
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Normalize(FASHION_MNIST_MEAN, FASHION_MNIST_STD),
+            torchvision.transforms.Resize((img_size, img_size)),
+        ]
+        train_transform: list = test_transform.copy()
+        if augmentation == AugmentationSwitch.TRAIN:
+            if gaussian_noise_var > 0:
+                train_transform.append(GaussianISONoise(gaussian_noise_var))
+            if add_inverse:
+                raise NotImplementedError("AddInverse not implemented for FashionMNIST")
+        elif augmentation == AugmentationSwitch.EXP_GEN:
+            train_transform.append(GaussianISONoise(gaussian_noise_var))
+            test_transform.append(GaussianISONoise(gaussian_noise_var))
+
+    test_transform = torchvision.transforms.Compose(test_transform)
+    train_transform = torchvision.transforms.Compose(train_transform)
+    return test_transform, train_transform
+
+
 @register_dataset(DatasetSwitch.CIFAR10)
-def get_cifar10_dataset(root_path, img_size, add_inverse=False):
+def get_cifar10_dataset(
+    root_path,
+    img_size,
+    add_inverse,
+    gaussian_noise_var,
+    augmentation=AugmentationSwitch.TRAIN,
+    label_transform=None,
+):
     img_size = 32 if img_size is None else img_size
     label_transform = None
 
-    training_data = get_cifar10_train(
-        root_path,
+    train_transform, test_transform = get_aug_cifar10(
         img_size,
         add_inverse,
-        label_transform,
-    )
-    test_data = get_cifar10_test(
-        root_path,
-        img_size,
-        add_inverse,
-        label_transform,
-    )
-    return training_data, test_data
-
-
-def get_cifar10_train(root_path, img_size, add_inverse=False, label_transform=None):
-    train_transform = torchvision.transforms.Compose(
-        [
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Resize((img_size, img_size)),
-            torchvision.transforms.RandomHorizontalFlip(),
-            (
-                AddInverse()
-                if add_inverse
-                else torchvision.transforms.Normalize(CIFAR10_MEAN, CIFAR10_STD)
-            ),
-        ]
+        gaussian_noise_var,
+        augmentation,
     )
     training_data = datasets.CIFAR10(
         root=root_path,
@@ -498,22 +518,6 @@ def get_cifar10_train(root_path, img_size, add_inverse=False, label_transform=No
         download=False,
         transform=train_transform,
         target_transform=label_transform,
-    )
-
-    return training_data
-
-
-def get_cifar10_test(root_path, img_size, add_inverse=False, label_transform=None):
-    test_transform = torchvision.transforms.Compose(
-        [
-            torchvision.transforms.Resize((img_size, img_size)),
-            torchvision.transforms.ToTensor(),
-            (
-                AddInverse()
-                if add_inverse
-                else torchvision.transforms.Normalize(CIFAR10_MEAN, CIFAR10_STD)
-            ),
-        ]
     )
     test_data = datasets.CIFAR10(
         root=root_path,
@@ -523,18 +527,95 @@ def get_cifar10_test(root_path, img_size, add_inverse=False, label_transform=Non
         target_transform=label_transform,
     )
 
-    return test_data
+    return training_data, test_data
+
+
+def get_aug_cifar10(
+    img_size,
+    add_inverse,
+    gaussian_noise_var,
+    augmentation,
+):
+    if augmentation == AugmentationSwitch.EXP_VIS:
+        test_transform = [
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Resize((img_size, img_size)),
+        ]
+        train_transform = test_transform.copy()
+        if add_inverse:
+            raise NotImplementedError("AddInverse not implemented for CIFAR10")
+    else:
+        test_transform = [
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Resize((img_size, img_size)),
+            (
+                AddInverse()
+                if add_inverse
+                else torchvision.transforms.Normalize(CIFAR10_MEAN, CIFAR10_STD)
+            ),
+        ]
+        train_transform = test_transform.copy()
+        if augmentation == AugmentationSwitch.TRAIN:
+            train_transform.append(
+                torchvision.transforms.RandomHorizontalFlip(),
+            )
+            if gaussian_noise_var > 0:
+                train_transform.append(GaussianISONoise(gaussian_noise_var))
+        elif augmentation == AugmentationSwitch.EXP_GEN:
+            if gaussian_noise_var > 0:
+                train_transform.append(GaussianISONoise(gaussian_noise_var))
+                test_transform.append(GaussianISONoise(gaussian_noise_var))
+
+    train_transform = torchvision.transforms.Compose(train_transform)
+    test_transform = torchvision.transforms.Compose(test_transform)
+    return train_transform, test_transform
+
+
+def get_aug_mnist(
+    img_size,
+    add_inverse,
+    gaussian_noise_var,
+    augmentation,
+):
+    if augmentation == AugmentationSwitch.EXP_VIS:
+        test_transform = [
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Resize((img_size, img_size)),
+        ]
+        train_transform = test_transform.copy()
+        if add_inverse:
+            raise NotImplementedError("AddInverse not implemented for MNIST")
+    else:
+        test_transform = [
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Resize((img_size, img_size)),
+            (
+                AddInverse()
+                if add_inverse
+                else torchvision.transforms.Normalize(MNIST_MEAN, MNIST_STD)
+            ),
+        ]
+        train_transform = test_transform.copy()
+        if gaussian_noise_var > 0:
+            train_transform.append(GaussianISONoise(gaussian_noise_var))
+            if augmentation == AugmentationSwitch.EXP_GEN:
+                test_transform.append(GaussianISONoise(gaussian_noise_var))
+
+    train_transform = torchvision.transforms.Compose(train_transform)
+    test_transform = torchvision.transforms.Compose(test_transform)
+    return train_transform, test_transform
 
 
 @register_dataset(DatasetSwitch.MNIST)
-def get_mnist_dataset(root_path, img_size, **kwargs):
+def get_mnist_dataset(
+    root_path, img_size, add_inverse, gaussian_noise_var, augmentation, **kwargs
+):
     img_size = 28 if img_size is None else img_size
-    transform = torchvision.transforms.Compose(
-        [
-            torchvision.transforms.Resize((img_size, img_size)),
-            torchvision.transforms.Normalize(MNIST_MEAN, MNIST_STD),
-            torchvision.transforms.ToTensor(),
-        ]
+    train_transform, test_transform = get_aug_mnist(
+        img_size,
+        add_inverse,
+        gaussian_noise_var,
+        augmentation,
     )
 
     label_dtype = torch.float32
@@ -545,7 +626,7 @@ def get_mnist_dataset(root_path, img_size, **kwargs):
         root=root_path,
         train=True,
         download=False,
-        transform=transform,
+        transform=train_transform,
         target_transform=label_transform,
     )
 
@@ -553,7 +634,7 @@ def get_mnist_dataset(root_path, img_size, **kwargs):
         root=root_path,
         train=False,
         download=False,
-        transform=transform,
+        transform=test_transform,
         target_transform=label_transform,
     )
 
@@ -573,6 +654,7 @@ class GradsDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.files)
+
 
 @register_dataset(DatasetSwitch.GRADS)
 def get_grad_dataloader(root_path, num_workers, prefetch_factor):

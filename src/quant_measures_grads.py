@@ -45,10 +45,10 @@ def measure_grads(data):
     results["vr_spectral_density"] = results["vr_spectral_density"][1:]
     # normalizing
     results["mr_spectral_density"] = (
-        results["mr_spectral_density"] / results["mr_spectral_density"].sum()
+        results["mr_spectral_density"] / results["mr_spectral_density"].sum() # div by zero
     )
     results["vr_spectral_density"] = (
-        results["vr_spectral_density"] / results["vr_spectral_density"].sum()
+        results["vr_spectral_density"] / results["vr_spectral_density"].sum() # div by zero
     )
     freq = np.arange(1, len(results["mr_spectral_density"]) + 1)
     results["mr_expected_spectral_density"] = (
@@ -81,7 +81,11 @@ def main(
     )
     measurements = []
     for data in dataloader:
-        measurements.append(measure_grads(data))
+        quant = measure_grads(data)
+        quant["index"] = data["index"]
+        quant["address"] = data["address"]
+        quant["noise_scale"] = data["noise_scale"]
+        measurements.append(quant)
         if data["index"] in hook_samples:
             address = data["address"][0]
             parent_dir = os.path.basename(os.path.dirname(address))

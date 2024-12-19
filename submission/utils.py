@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from glob import glob
 from submission import training, grads, quant
-from src.utils import get_experiment_prefix, get_save_path
+from src.utils import EXPERIMENT_PREFIX_SEP, get_experiment_prefix, get_save_path
 
 
 def submit_training(
@@ -80,7 +80,8 @@ def submit_grads(
     args["timeout"] = timeout
     args["batch_size"] = args["activation"].map(batch_size)
     args["experiment_prefix"] = args.apply(
-        lambda x: get_experiment_prefix(**x),
+        lambda x: get_experiment_prefix(**x)
+        + f"{EXPERIMENT_PREFIX_SEP}{x.gaussian_noise_var}",
         axis=1,
     )
     args["experiment_output_dir"] = args.apply(
@@ -101,7 +102,7 @@ def submit_grads(
     valid_ids = checkpoint_exists & ~output_dir_exists
     valid_args = args[valid_ids]
 
-    print("Checkpoints skipped:")
+    print("Checkpoints not available:")
     args[~checkpoint_exists]["checkpoint_path"].apply(print)
     print("Output dirs skipped:")
     args[output_dir_exists]["experiment_output_dir"].apply(print)

@@ -10,7 +10,7 @@ os.chdir(workspace_dir)
 sys.path.insert(0, workspace_dir)
 
 from src import datasets
-from src.utils import determine_device, get_experiment_prefix
+from src.utils import determine_device
 from src.datasets import (
     extract_the_dataset_on_compute_node,
     move_data_to_compute_node,

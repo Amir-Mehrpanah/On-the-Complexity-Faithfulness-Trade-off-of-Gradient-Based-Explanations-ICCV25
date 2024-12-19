@@ -65,7 +65,7 @@ pre_act = [
     # True,
 ]
 
-if 1:  # debug
+if 0:  # debug
     port = 5678
     block_main = True
     timeout = 10
@@ -78,15 +78,15 @@ num_workers = [16]
 prefetch_factor = [8]
 img_size = [
     28,
-    37,
+    # 37,
     46,
-    55,
+    # 55,
     64,
 ]
 l2_reg = [
-    1e-2,
+    # 1e-2,
     5e-3,
-    1e-3,
+    # 1e-3,
 ]
 # %% submit training
 batch_size = {
@@ -138,20 +138,20 @@ submit_training(
 )
 
 # %% submit grads
-num_batches = [4]
+num_batches = [2]
 batch_size = {
-    ActivationSwitch.RELU: 32,
-    ActivationSwitch.LEAKY_RELU: 32,
-    ActivationSwitch.SOFTPLUS_B_1: 32,
-    ActivationSwitch.SOFTPLUS_B1: 32,
-    ActivationSwitch.SOFTPLUS_B5: 32,
+    ActivationSwitch.RELU: 64,
+    ActivationSwitch.LEAKY_RELU: 64,
+    ActivationSwitch.SOFTPLUS_B_1: 64,
+    ActivationSwitch.SOFTPLUS_B1: 64,
+    ActivationSwitch.SOFTPLUS_B5: 64,
 }
 augmentation = [
     AugmentationSwitch.EXP_GEN,
 ]
 epoch = [0]
-num_distinct_images = [1000]
-gaussian_noise_var = [1e-5]
+num_distinct_images = [100]
+gaussian_noise_var = [1e-5, 1e-4, 1e-3, 1e-2, 1e-1]
 eval_only_on_test = [True]
 stats = [
     {
@@ -228,24 +228,3 @@ os.chdir(cwd)
 # !rm -r .tmp/outputs/*
 
 # %% debug
-import os
-
-os.chdir(cwd)
-from src.models.utils import get_model
-import torch.nn as nn
-import torch
-
-model = get_model(
-    input_shape=(1, 28, 28),
-    model_name=ModelSwitch.SIMPLE_CNN_DEPTH,
-    num_classes=10,
-    activation_fn=nn.ReLU(),
-    bias=False,
-    pre_act=False,
-    layers=[4],
-)
-
-x = torch.randn(1, 1, 28, 28)
-model(x)
-
-# %%
