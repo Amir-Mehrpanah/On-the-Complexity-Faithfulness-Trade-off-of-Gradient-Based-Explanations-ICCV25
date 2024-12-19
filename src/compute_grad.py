@@ -188,7 +188,7 @@ def forward_single_grad(model, x, target_class):
 def forward_batch_grad(model, x, target_class):
     return torch.func.vmap(
         forward_single_grad,
-        in_dims=(None, 0),
+        in_dims=(None, 0, None),
         out_dims=0,
     )(
         model,
@@ -218,6 +218,7 @@ def compute_grad_and_save(
 
         if i % num_batches == 0:
             x_clean, y_clean = next(iter_loader)
+            x_clean, y_clean = x_clean.to(device), y_clean.to(device)
             target_class = get_target_class(x_clean, model)
 
         grad, output = forward_batch_grad(model, x, target_class)

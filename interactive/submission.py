@@ -1,5 +1,4 @@
 # %% imports
-import torch
 import os
 
 cwd = "/proj/azizpour-group/users/x_amime/projects/kernel-view-to-explainability/"
@@ -16,7 +15,6 @@ from src.utils import (
     LossSwitch,
     DatasetSwitch,
     ModelSwitch,
-    AugmentationSwitch,
 )
 
 seed = [0]
@@ -65,7 +63,7 @@ pre_act = [
     # True,
 ]
 
-if 1:  # debug
+if 0:  # debug
     port = 5678
     block_main = True
     timeout = 10
