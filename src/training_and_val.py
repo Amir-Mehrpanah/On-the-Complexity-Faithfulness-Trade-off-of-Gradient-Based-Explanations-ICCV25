@@ -247,7 +247,6 @@ def main(
     lr,
     bias,
     ckpt_mod,
-    augmentation,
     add_inverse,
     dataset,
     num_workers,
@@ -301,10 +300,10 @@ def main(
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=l2_reg)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=lr_decay_gamma)
     print(
-        f"Experimen model_name {model_name} activation {activation} layers {layers} "
-        f" loss {loss} bias {bias} add_inverse {add_inverse} l2_reg {l2_reg} "
-        f"({batch_size},{input_shape}) augmentation {augmentation}"
-        f" pre_act {pre_act} gaussian_noise_var {gaussian_noise_var}"
+        f"Experiment model_name {model_name} activation {activation} layers {layers}"
+        f" loss {loss} bias {bias} add_inverse {add_inverse} l2_reg {l2_reg}"
+        f" ({batch_size},{input_shape}) pre_act {pre_act}"
+        f" gaussian_noise_var {gaussian_noise_var}"
     )
     old_test_acc = 0
     saved_any_checkpoint = False

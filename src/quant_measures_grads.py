@@ -1,5 +1,5 @@
 import os
-
+from tqdm import tqdm
 import numpy as np
 from src.datasets import get_grad_dataloader
 
@@ -45,10 +45,12 @@ def measure_grads(data):
     results["vr_spectral_density"] = results["vr_spectral_density"][1:]
     # normalizing
     results["mr_spectral_density"] = (
-        results["mr_spectral_density"] / results["mr_spectral_density"].sum() # div by zero
+        results["mr_spectral_density"]
+        / results["mr_spectral_density"].sum()  # div by zero
     )
     results["vr_spectral_density"] = (
-        results["vr_spectral_density"] / results["vr_spectral_density"].sum() # div by zero
+        results["vr_spectral_density"]
+        / results["vr_spectral_density"].sum()  # div by zero
     )
     freq = np.arange(1, len(results["mr_spectral_density"]) + 1)
     results["mr_expected_spectral_density"] = (
@@ -80,7 +82,7 @@ def main(
         prefetch_factor=prefetch_factor,
     )
     measurements = []
-    for data in dataloader:
+    for data in tqdm(dataloader):
         quant = measure_grads(data)
         quant["index"] = data["index"]
         quant["address"] = data["address"]

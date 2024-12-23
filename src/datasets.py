@@ -28,7 +28,7 @@ class GaussianISONoise(torch.nn.Module):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(sigma={self.p})"
-    
+
     def __str__(self):
         return super().__str__() + f" with std={self.std}"
 

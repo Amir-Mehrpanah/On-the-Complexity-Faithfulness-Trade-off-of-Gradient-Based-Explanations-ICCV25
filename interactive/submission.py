@@ -56,7 +56,10 @@ layers = [
     # [1, 1, 6, 1],
     # [1, 1, 1, 6],
 ]
-dataset = [DatasetSwitch.FASHION_MNIST]
+dataset = [
+    # DatasetSwitch.FASHION_MNIST,
+    DatasetSwitch.CIFAR10,
+]
 bias = [False]
 pre_act = [
     False,
@@ -75,11 +78,10 @@ else:
 num_workers = [16]
 prefetch_factor = [8]
 img_size = [
-    28,
-    # 37,
-    46,
-    # 55,
-    64,
+    # 28,
+    # 46,
+    32,
+    # 64,
 ]
 l2_reg = [
     # 1e-2,
@@ -88,11 +90,11 @@ l2_reg = [
 ]
 # %% submit training
 batch_size = {
-    ActivationSwitch.RELU: 512,
-    ActivationSwitch.LEAKY_RELU: 512,
-    ActivationSwitch.SOFTPLUS_B_1: 512,
-    ActivationSwitch.SOFTPLUS_B1: 512,
-    ActivationSwitch.SOFTPLUS_B5: 512,
+    ActivationSwitch.RELU: 256,
+    ActivationSwitch.LEAKY_RELU: 256,
+    ActivationSwitch.SOFTPLUS_B_1: 256,
+    ActivationSwitch.SOFTPLUS_B1: 256,
+    ActivationSwitch.SOFTPLUS_B5: 256,
 }
 min_test_acc = [0.5]
 patience = [5]
@@ -184,9 +186,9 @@ submit_grads(
 
 
 # %% run measurements on grads
-hook_samples = [[15, 13]]
+hook_samples = [[13]]
 submit_measurements(
-    dataset=[DatasetSwitch.GRADS],
+    dataset=dataset,
     timeout=timeout,
     port=port,
     block_main=block_main,
@@ -196,8 +198,9 @@ submit_measurements(
 )
 
 # %% visualize
+hook_samples = [[13]]
 keys = ["var", "mean", "var_rank", "mean_rank", "image"]
-visualize_hooks(hook_samples, keys)
+visualize_hooks(DatasetSwitch.CIFAR10, hook_samples, keys)
 
 # %% extract the grad results
 # os.system("bash src/ext.sh")

@@ -158,12 +158,12 @@ def execute_job_submission(block_main, port, timeout, args, func, num_gpus=1):
     if port != None:
         print("Running only the first job because of the debug flag")
         jobs_args = [jobs_args[0]]
-        
+
     print("Do you want to continue? [y/n]")
     if input() != "y":
         print("Aborted")
         return
-    
+
     print("submitting jobs")
     executor = submitit.AutoExecutor(folder="logs/%j")
     executor.update_parameters(
@@ -190,10 +190,10 @@ def execute_job_submission(block_main, port, timeout, args, func, num_gpus=1):
             return results
 
 
-def visualize_hooks(hook_samples, keys):
+def visualize_hooks(Dataset, hook_samples, keys):
     for j in hook_samples[0]:
         os.makedirs(f".tmp/visualizations/{j}", exist_ok=True)
-        glob_path = f".tmp/quants/hooks/*/{j}.pt"
+        glob_path = f".tmp/quants/hooks/{Dataset}*/{j}.pt"
         paths = glob(glob_path)
         print(glob_path, len(paths))
         for path in paths:

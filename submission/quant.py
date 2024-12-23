@@ -16,7 +16,7 @@ from src.datasets import (
     move_data_to_compute_node,
     resolve_data_directories,
 )
-from src.utils import determine_device
+from src.utils import EXPERIMENT_PREFIX_SEP, determine_device
 from src import quant_measures_grads
 
 
@@ -31,7 +31,7 @@ def extract_the_grads_dataset_on_compute_node(COMPUTE_DATA_DIR, EXT, TARGET_DIR)
 
 def main(args):
     print(args)
-
+    dataset = args["dataset"]
     if args["port"] is not None and args["port"] > 0:
         job_env = submitit.JobEnvironment()
         print(f"Debugger is running on node {job_env.hostname} port {args['port']}")
@@ -66,4 +66,7 @@ def main(args):
     )
 
     os.makedirs(paths.LOCAL_QUANTS_DIR, exist_ok=True)
-    torch.save(results, os.path.join(paths.LOCAL_QUANTS_DIR, "quants.pt"))
+    file_name = os.path.join(
+        paths.LOCAL_QUANTS_DIR, f"{dataset}{EXPERIMENT_PREFIX_SEP}quants.pt"
+    )
+    torch.save(results, file_name)
