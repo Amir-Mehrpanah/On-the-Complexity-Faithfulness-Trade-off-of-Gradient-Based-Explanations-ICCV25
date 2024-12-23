@@ -16,7 +16,7 @@ from src.datasets import (
     move_data_to_compute_node,
     resolve_data_directories,
 )
-from src.utils import EXPERIMENT_PREFIX_SEP, determine_device
+from src.utils import EXPERIMENT_PREFIX_SEP, DatasetSwitch, determine_device
 from src import quant_measures_grads
 
 
@@ -32,6 +32,8 @@ def extract_the_grads_dataset_on_compute_node(COMPUTE_DATA_DIR, EXT, TARGET_DIR)
 def main(args):
     print(args)
     dataset = args["dataset"]
+    args["dataset"] = DatasetSwitch.GRADS
+    
     if args["port"] is not None and args["port"] > 0:
         job_env = submitit.JobEnvironment()
         print(f"Debugger is running on node {job_env.hostname} port {args['port']}")

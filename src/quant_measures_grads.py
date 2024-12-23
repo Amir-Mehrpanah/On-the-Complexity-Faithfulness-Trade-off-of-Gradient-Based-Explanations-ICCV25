@@ -1,5 +1,4 @@
 import os
-from tqdm import tqdm
 import numpy as np
 from src.datasets import get_grad_dataloader
 
@@ -82,7 +81,8 @@ def main(
         prefetch_factor=prefetch_factor,
     )
     measurements = []
-    for data in tqdm(dataloader):
+    q10_dataloader = len(dataloader) // 10
+    for i, data in enumerate(dataloader):
         quant = measure_grads(data)
         quant["index"] = data["index"]
         quant["address"] = data["address"]
@@ -94,4 +94,6 @@ def main(
             os.system(f"rsync -a {address} {hooks_dir}/{parent_dir}/")  # faster
             # torch.save(data, f"{hooks_dir}/{data['address']}")
 
+        if (i + 1) % q10_dataloader == 0:
+            print(f"{i/len(dataloader)} is processed")
     return measurements

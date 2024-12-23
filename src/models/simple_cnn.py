@@ -14,9 +14,7 @@ class SimpleConvNet(nn.Module):
     ):
         super().__init__()
         C, H, W = input_shape
-        assert len(layers) == 1 and (
-            layers[0] <= 4
-        ), "layers must be a list of length 1 where layers[0] <= 4"
+        assert len(layers) == 1, "layers must be a list of length 1"
 
         self.features = nn.Sequential(
             nn.Conv2d(C, 16, kernel_size=3, stride=1, padding=1, bias=conv_bias),

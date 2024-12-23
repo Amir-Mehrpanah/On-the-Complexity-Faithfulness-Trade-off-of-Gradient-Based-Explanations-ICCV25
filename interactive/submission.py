@@ -43,10 +43,12 @@ model_name = [
     # ModelSwitch.RESNET_BOTTLENECK,
 ]
 layers = [
-    [1],
-    [2],
-    [3],
-    [4],
+    # [1],
+    # [2],
+    # [3],
+    # [4],
+    [8],
+    [16],
     # [1, 1, 1, 1],
     # [2, 2, 2, 2],
     # [3, 3, 3, 3],
@@ -58,7 +60,8 @@ layers = [
 ]
 dataset = [
     # DatasetSwitch.FASHION_MNIST,
-    DatasetSwitch.CIFAR10,
+    # DatasetSwitch.CIFAR10,
+    DatasetSwitch.IMAGENETTE,
 ]
 bias = [False]
 pre_act = [
@@ -80,8 +83,10 @@ prefetch_factor = [8]
 img_size = [
     # 28,
     # 46,
-    32,
-    # 64,
+    # 32,
+    64,
+    112,
+    224,
 ]
 l2_reg = [
     # 1e-2,
