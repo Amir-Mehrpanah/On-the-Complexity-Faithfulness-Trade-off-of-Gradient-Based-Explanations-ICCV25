@@ -31,7 +31,7 @@ def extract_the_grads_dataset_on_compute_node(COMPUTE_DATA_DIR, EXT, TARGET_DIR)
 
 def main(args):
     print(args)
-    dataset = args["dataset"]
+    name = args["name"]
     args["dataset"] = DatasetSwitch.GRADS
     
     if args["port"] is not None and args["port"] > 0:
@@ -69,6 +69,6 @@ def main(args):
 
     os.makedirs(paths.LOCAL_QUANTS_DIR, exist_ok=True)
     file_name = os.path.join(
-        paths.LOCAL_QUANTS_DIR, f"{dataset}{EXPERIMENT_PREFIX_SEP}quants.pt"
+        paths.LOCAL_QUANTS_DIR, f"{name}{EXPERIMENT_PREFIX_SEP}quants.pt"
     )
     torch.save(results, file_name)

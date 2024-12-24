@@ -24,6 +24,8 @@ activation = [
     ActivationSwitch.SOFTPLUS_B_1,
     ActivationSwitch.SOFTPLUS_B1,
     ActivationSwitch.SOFTPLUS_B5,
+    ActivationSwitch.SOFTPLUS_B7,
+    ActivationSwitch.SOFTPLUS_B10,
 ]
 loss = [
     LossSwitch.CE,
@@ -43,12 +45,11 @@ model_name = [
     # ModelSwitch.RESNET_BOTTLENECK,
 ]
 layers = [
-    # [1],
-    # [2],
-    # [3],
-    # [4],
-    [8],
-    [16],
+    # [],
+    [1],
+    [2],
+    [3],
+    [4],
     # [1, 1, 1, 1],
     # [2, 2, 2, 2],
     # [3, 3, 3, 3],
@@ -90,8 +91,8 @@ img_size = [
 ]
 l2_reg = [
     # 1e-2,
-    5e-3,
-    # 1e-3,
+    # 5e-3,
+    1e-3,
 ]
 # %% submit training
 batch_size = {
@@ -100,6 +101,8 @@ batch_size = {
     ActivationSwitch.SOFTPLUS_B_1: 256,
     ActivationSwitch.SOFTPLUS_B1: 256,
     ActivationSwitch.SOFTPLUS_B5: 256,
+    ActivationSwitch.SOFTPLUS_B7: 256,
+    ActivationSwitch.SOFTPLUS_B10: 256,
 }
 min_test_acc = [0.5]
 patience = [5]
@@ -145,7 +148,9 @@ batch_size = {
     ActivationSwitch.LEAKY_RELU: 64,
     ActivationSwitch.SOFTPLUS_B_1: 64,
     ActivationSwitch.SOFTPLUS_B1: 64,
+    ActivationSwitch.SOFTPLUS_B7: 64,
     ActivationSwitch.SOFTPLUS_B5: 64,
+    ActivationSwitch.SOFTPLUS_B10: 64,
 }
 epoch = [0]
 num_distinct_images = [100]
@@ -192,8 +197,9 @@ submit_grads(
 
 # %% run measurements on grads
 hook_samples = [[13]]
+name = ["SKBN"]
 submit_measurements(
-    dataset=dataset,
+    name=name,
     timeout=timeout,
     port=port,
     block_main=block_main,
@@ -205,7 +211,7 @@ submit_measurements(
 # %% visualize
 hook_samples = [[13]]
 keys = ["var", "mean", "var_rank", "mean_rank", "image"]
-visualize_hooks(DatasetSwitch.CIFAR10, hook_samples, keys)
+visualize_hooks(DatasetSwitch.IMAGENETTE, hook_samples, keys)
 
 # %% extract the grad results
 # os.system("bash src/ext.sh")
@@ -226,3 +232,18 @@ os.chdir(cwd)
 # !rm -r .tmp/outputs/*
 
 # %% debug
+import torch
+from src.models.utils import get_model
+
+g = 28
+model = get_model(
+    input_shape=(3, g, g),
+    model_name=ModelSwitch.SIMPLE_CNN_SK,
+    num_classes=10,
+    activation_fn=torch.nn.ReLU(),
+    bias=False,
+    pre_act=False,
+    layers=[],
+)
+x = torch.randn(1, 3, g, g)
+model(x)

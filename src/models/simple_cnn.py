@@ -85,7 +85,13 @@ class SimpleConvSKBN(nn.Module):
         self.activation = activation
         self.maxpool = nn.MaxPool2d(2, 2)
         self.flatten = nn.Flatten()
-        self.fc1 = nn.Linear(64 * 15 * 15, 512, bias=fc_bias)
+        # 224 -> 15
+        # 112 -> 8
+        # 64 -> 5
+        # 32 -> 3
+        # 28 -> 3
+
+        self.fc1 = nn.Linear(64 * ((H - 4) // 16 + 2) ** 2, 512, bias=fc_bias)
         self.fc2 = nn.Linear(512, num_classes, bias=fc_bias)
 
     def forward(self, x):

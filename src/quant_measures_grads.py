@@ -30,6 +30,9 @@ def spectral_density(image):
     radial_count = np.bincount(r.ravel())
     radial_profile = radial_sum / radial_count  # Average power in each radius
 
+    radial_profile = radial_profile[1:]  # Drop the zeroth element
+    radial_profile = radial_profile / radial_profile.mean()  # Normalize
+
     return radial_profile
 
 
@@ -38,25 +41,21 @@ def measure_grads(data):
         "cosine_similarity": cosine_similarity(data),
         "mr_spectral_density": spectral_density(data["mean_rank"]),
         "vr_spectral_density": spectral_density(data["var_rank"]),
+        "m_spectral_density": spectral_density(data["mean"]),
+        "v_spectral_density": spectral_density(data["var"]),
     }
-    # dropping zeroth element
-    results["mr_spectral_density"] = results["mr_spectral_density"][1:]
-    results["vr_spectral_density"] = results["vr_spectral_density"][1:]
-    # normalizing
-    results["mr_spectral_density"] = (
-        results["mr_spectral_density"]
-        / results["mr_spectral_density"].sum()  # div by zero
-    )
-    results["vr_spectral_density"] = (
-        results["vr_spectral_density"]
-        / results["vr_spectral_density"].sum()  # div by zero
-    )
     freq = np.arange(1, len(results["mr_spectral_density"]) + 1)
     results["mr_expected_spectral_density"] = (
         freq * results["mr_spectral_density"]
     ).mean()
     results["vr_expected_spectral_density"] = (
         freq * results["vr_spectral_density"]
+    ).mean()
+    results["m_expected_spectral_density"] = (
+        freq * results["m_spectral_density"]
+    ).mean()
+    results["v_expected_spectral_density"] = (
+        freq * results["v_spectral_density"]
     ).mean()
     return results
 

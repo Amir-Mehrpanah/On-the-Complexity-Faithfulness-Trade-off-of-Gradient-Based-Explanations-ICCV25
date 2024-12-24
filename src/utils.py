@@ -50,6 +50,7 @@ class ActivationSwitch(ConvertableEnum):
     SOFTPLUS_B_2 = 13
     SOFTPLUS_B100 = 17
     SOFTPLUS_B10 = 16
+    SOFTPLUS_B7 = 18
     SOFTPLUS_B5 = 15
     SOFTPLUS_B1 = 14
     LEAKY_RELU = 21
