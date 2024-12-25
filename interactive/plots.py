@@ -8,7 +8,7 @@ import os
 os.chdir("/home/x_amime/x_amime/projects/kernel-view-to-explainability/")
 
 output_dir = ".tmp/visualizations/paper/"
-dataset = "SKBN_4"
+dataset = "IMAGENETTE_mx"
 quants_path = f".tmp/quants/{dataset}::quants.pt"
 quants = torch.load(quants_path)
 quants = pd.DataFrame(quants)
@@ -30,18 +30,18 @@ temp = pd.DataFrame(
 )
 temp.drop(columns=["ns"], inplace=True)
 quants = pd.concat([quants, temp], axis=1)
-# quants = quants.set_index(
-#     [
-#         "layers",
-#         "activation",
-#         "seed",
-#         "l2reg",
-#         "input_size",
-#         "noise_scale",
-#         "model_name",
-#         "index",
-#     ]
-# )
+quants = quants.set_index(
+    [
+        "layers",
+        "activation",
+        "seed",
+        "l2reg",
+        "input_size",
+        "noise_scale",
+        "model_name",
+        "index",
+    ]
+)
 
 activation_nice_names = {
     "RELU": "ReLU",
@@ -49,10 +49,14 @@ activation_nice_names = {
     "SOFTPLUS_B_1": "Softplus 0.1",
     "SOFTPLUS_B1": "Softplus 1",
     "SOFTPLUS_B5": "Softplus 5",
+    "SOFTPLUS_B7": "Softplus 7",
+    "SOFTPLUS_B10": "Softplus 10",
 }
 activations = [
     "RELU",
     "LEAKY_RELU",
+    "SOFTPLUS_B10",
+    "SOFTPLUS_B7",
     "SOFTPLUS_B5",
     "SOFTPLUS_B1",
     "SOFTPLUS_B_1",

@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from src.datasets import get_grad_dataloader
+import gc
 
 
 def cosine_similarity(data):
@@ -94,5 +95,6 @@ def main(
             # torch.save(data, f"{hooks_dir}/{data['address']}")
 
         if (i + 1) % q10_dataloader == 0:
-            print(f"{i/len(dataloader)} is processed")
+            print(f"{i / len(dataloader):.2%} is processed")
+            gc.collect()
     return measurements

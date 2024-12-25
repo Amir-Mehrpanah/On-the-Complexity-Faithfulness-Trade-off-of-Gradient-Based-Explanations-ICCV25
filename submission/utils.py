@@ -53,7 +53,8 @@ def submit_training(
     valid_args["warmup_epochs"] = (valid_args["epochs"] * warmup_epochs_ratio).astype(
         int
     )
-
+    print("Valid args:")
+    valid_args["checkpoint_path"].apply(print)
     return execute_job_submission(block_main, port, timeout, valid_args, training.main)
 
 
@@ -140,10 +141,21 @@ def submit_measurements(
         args,
         quant.main,
         num_gpus=0,
+        cpus_per_task=16,
+        mem_gb=64,
     )
 
 
-def execute_job_submission(block_main, port, timeout, args, func, num_gpus=1):
+def execute_job_submission(
+    block_main,
+    port,
+    timeout,
+    args,
+    func,
+    num_gpus=1,
+    cpus_per_task=16,
+    mem_gb=64,
+):
     jobs_args = args.to_dict(orient="records")
 
     repr_args = args.copy()
@@ -168,7 +180,8 @@ def execute_job_submission(block_main, port, timeout, args, func, num_gpus=1):
     executor = submitit.AutoExecutor(folder="logs/%j")
     executor.update_parameters(
         timeout_min=timeout,
-        cpus_per_task=8,
+        cpus_per_task=cpus_per_task,
+        mem_gb=mem_gb,
         slurm_additional_parameters={
             "constraint": "thin",
             "reservation": "safe",

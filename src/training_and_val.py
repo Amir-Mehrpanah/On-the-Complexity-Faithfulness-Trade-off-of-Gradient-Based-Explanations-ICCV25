@@ -343,10 +343,24 @@ def main(
         scheduler.step()
 
         # early stopping
-        if (epoch > warmup_epochs) and (test_acc < old_test_acc + 1e-3):
+        if early_stopping_criteria(
+            epoch,
+            warmup_epochs,
+            test_acc,
+            old_test_acc,
+            min_test_acc,
+            tol=1e-3,
+        ):
             patience_counter -= 1
             if patience_counter == 0:
-                print("Early stopping")
+                print(
+                    "Early stopping met when test_acc is ",
+                    test_acc,
+                    " at epoch ",
+                    epoch,
+                    " if saved checkpoints: ",
+                    saved_any_checkpoint,
+                )
                 break
         else:
             patience_counter = patience
@@ -361,6 +375,19 @@ def main(
     return test_acc
 
 
+def early_stopping_criteria(
+    epoch,
+    warmup_epochs,
+    test_acc,
+    old_test_acc,
+    min_test_acc,
+    tol,
+):
+    # assure all models are trained equally
+    # and (test_acc - old_test_acc < tol)
+    return (epoch > warmup_epochs) and (test_acc > min_test_acc)
+
+
 def save_ckpt_criteria(
     ckpt_mod,
     epoch,
@@ -372,7 +399,7 @@ def save_ckpt_criteria(
     return (
         (epoch % ckpt_mod == 0)
         and (epoch > warmup_epochs)
-        and (test_acc > old_test_acc)
+        # and (test_acc > old_test_acc)
         and (test_acc > min_test_acc)
     )
 

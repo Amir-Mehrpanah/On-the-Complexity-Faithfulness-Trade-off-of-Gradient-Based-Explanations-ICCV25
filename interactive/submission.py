@@ -77,7 +77,7 @@ if 0:  # debug
 else:
     port = None
     block_main = False
-    timeout = 20
+    timeout = 60
 
 num_workers = [16]
 prefetch_factor = [8]
@@ -90,9 +90,9 @@ img_size = [
     224,
 ]
 l2_reg = [
-    # 1e-2,
+    0,
     # 5e-3,
-    1e-3,
+    # 1e-3,
 ]
 # %% submit training
 batch_size = {
@@ -105,13 +105,13 @@ batch_size = {
     ActivationSwitch.SOFTPLUS_B10: 256,
 }
 min_test_acc = [0.5]
-patience = [5]
+patience = [1]
 lr = [1e-3]
 ckpt_mod = [1]  # checkpoint if epoch % ckpt_mod == 0
-epochs = [20]
+epochs = [100]
 lr_decay_gamma = [0.98]
-warmup_epochs_ratio = 0.6
-gaussian_noise_var = [0.01]
+warmup_epochs_ratio = 0.0
+gaussian_noise_var = [0.0]
 
 submit_training(
     seed=seed,
@@ -197,7 +197,8 @@ submit_grads(
 
 # %% run measurements on grads
 hook_samples = [[13]]
-name = ["SKBN"]
+name = ["IMAGENETTE"]
+num_workers = [2]
 submit_measurements(
     name=name,
     timeout=timeout,
