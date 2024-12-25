@@ -33,7 +33,7 @@ def main(args):
     print(args)
     name = args["name"]
     args["dataset"] = DatasetSwitch.GRADS
-    
+
     if args["port"] is not None and args["port"] > 0:
         job_env = submitit.JobEnvironment()
         print(f"Debugger is running on node {job_env.hostname} port {args['port']}")
@@ -54,7 +54,7 @@ def main(args):
     ) = resolve_data_directories(args)
 
     os.system("module load Fpart/1.5.1-gcc-8.5.0")
-
+    DATA_DIR = os.path.join(DATA_DIR, name)
     move_data_to_compute_node(DATA_DIR, EXT == "tgz", COMPUTE_DATA_DIR)
 
     extract_the_grads_dataset_on_compute_node(COMPUTE_DATA_DIR, EXT, TARGET_DIR)

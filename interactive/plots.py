@@ -8,7 +8,7 @@ import os
 os.chdir("/home/x_amime/x_amime/projects/kernel-view-to-explainability/")
 
 output_dir = ".tmp/visualizations/paper/"
-dataset = "IMAGENETTE_mx"
+dataset = "IMAGENETTE"
 quants_path = f".tmp/quants/{dataset}::quants.pt"
 quants = torch.load(quants_path)
 quants = pd.DataFrame(quants)
@@ -18,7 +18,6 @@ temp = quants["address"].apply(lambda x: x[0].split("/")[-2].split("::"))
 temp = pd.DataFrame(
     temp.tolist(),
     columns=[
-        "dataset",
         "model_name",
         "layers",
         "activation",
@@ -30,6 +29,7 @@ temp = pd.DataFrame(
 )
 temp.drop(columns=["ns"], inplace=True)
 quants = pd.concat([quants, temp], axis=1)
+
 quants = quants.set_index(
     [
         "layers",
@@ -48,6 +48,7 @@ activation_nice_names = {
     "LEAKY_RELU": "Leaky ReLU",
     "SOFTPLUS_B_1": "Softplus 0.1",
     "SOFTPLUS_B1": "Softplus 1",
+    "SOFTPLUS_B3": "Softplus 3",
     "SOFTPLUS_B5": "Softplus 5",
     "SOFTPLUS_B7": "Softplus 7",
     "SOFTPLUS_B10": "Softplus 10",
@@ -58,6 +59,7 @@ activations = [
     "SOFTPLUS_B10",
     "SOFTPLUS_B7",
     "SOFTPLUS_B5",
+    "SOFTPLUS_B3",
     "SOFTPLUS_B1",
     "SOFTPLUS_B_1",
 ]
@@ -351,7 +353,7 @@ def cosine_similarity(
 
 
 def density_depth_noisescale(
-    quants, spec_type="mr_spectral_density", for_noise_scale=1e-05
+    quants, spec_type="mr_spectral_density", for_input_size=28
 ):
     temp = quants.pivot_table(
         columns=["input_size", "layers", "activation", "noise_scale"],
@@ -374,6 +376,9 @@ def density_depth_noisescale(
     for sid, input_size in enumerate(temp.columns.levels[0]):
         for nid, noise_scale in enumerate(temp.columns.levels[3]):
             for lid, layers in enumerate(temp.columns.levels[1]):
+
+                if input_size != for_input_size:
+                    continue
 
                 if len(temp.columns.levels[3]) == 1:
                     ax = axes[lid]
@@ -426,15 +431,25 @@ expected_freq_depth(quants)
 
 # %% plot density_depth_inputsize
 for ns in quants.index.levels[5]:
-    for spec_type in ["mr_spectral_density", "vr_spectral_density"]:
+    for spec_type in [
+        "m_expected_spectral_density",
+        "mr_spectral_density",
+        # "v_expected_spectral_density",
+        # "vr_spectral_density",
+    ]:
         density_depth_inputsize(quants, spec_type=spec_type, for_noise_scale=ns)
         plt.savefig(f"{output_dir}{dataset}_{spec_type}_{ns}.pdf")
         plt.close()
 
 # %% plot density_depth_noisescale
 for isz in quants.index.levels[4]:
-    for spec_type in ["mr_spectral_density", "vr_spectral_density"]:
-        density_depth_noisescale(quants, spec_type=spec_type, for_noise_scale=isz)
+    for spec_type in [
+        "m_expected_spectral_density",
+        "mr_spectral_density",
+        # "v_expected_spectral_density",
+        # "vr_spectral_density",
+    ]:
+        density_depth_noisescale(quants, spec_type=spec_type, for_input_size=isz)
         plt.savefig(f"{output_dir}{dataset}_{spec_type}_{isz}.pdf")
         plt.close()
 
@@ -577,3 +592,5 @@ for spec_type in [
     "v_expected_spectral_density",
 ]:
     expected_freq_model(quants, spec_type=spec_type)
+
+# %%

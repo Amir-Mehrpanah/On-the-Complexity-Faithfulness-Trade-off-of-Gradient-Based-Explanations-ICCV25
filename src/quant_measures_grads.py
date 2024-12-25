@@ -32,7 +32,9 @@ def spectral_density(image):
     radial_profile = radial_sum / radial_count  # Average power in each radius
 
     radial_profile = radial_profile[1:]  # Drop the zeroth element
-    radial_profile = radial_profile / radial_profile.mean()  # Normalize
+    radial_profile = radial_profile / min(
+        radial_profile.sum(), 1e-5
+    )  # Normalize and avoid division by zero
 
     return radial_profile
 
@@ -41,23 +43,23 @@ def measure_grads(data):
     results = {
         "cosine_similarity": cosine_similarity(data),
         "mr_spectral_density": spectral_density(data["mean_rank"]),
-        "vr_spectral_density": spectral_density(data["var_rank"]),
         "m_spectral_density": spectral_density(data["mean"]),
-        "v_spectral_density": spectral_density(data["var"]),
+        # "vr_spectral_density": spectral_density(data["var_rank"]),
+        # "v_spectral_density": spectral_density(data["var"]),
     }
     freq = np.arange(1, len(results["mr_spectral_density"]) + 1)
     results["mr_expected_spectral_density"] = (
         freq * results["mr_spectral_density"]
     ).mean()
-    results["vr_expected_spectral_density"] = (
-        freq * results["vr_spectral_density"]
-    ).mean()
     results["m_expected_spectral_density"] = (
         freq * results["m_spectral_density"]
     ).mean()
-    results["v_expected_spectral_density"] = (
-        freq * results["v_spectral_density"]
-    ).mean()
+    # results["vr_expected_spectral_density"] = (
+    #     freq * results["vr_spectral_density"]
+    # ).mean()
+    # results["v_expected_spectral_density"] = (
+    #     freq * results["v_spectral_density"]
+    # ).mean()
     return results
 
 
@@ -94,7 +96,7 @@ def main(
             os.system(f"rsync -a {address} {hooks_dir}/{parent_dir}/")  # faster
             # torch.save(data, f"{hooks_dir}/{data['address']}")
 
-        if (i + 1) % q10_dataloader == 0:
+        if i % q10_dataloader == 0:
             print(f"{i / len(dataloader):.2%} is processed")
             gc.collect()
     return measurements

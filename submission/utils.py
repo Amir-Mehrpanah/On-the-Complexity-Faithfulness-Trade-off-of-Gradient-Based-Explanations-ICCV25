@@ -18,6 +18,7 @@ def submit_training(
     port,
     timeout,
     batch_size,
+    lr,
     warmup_epochs_ratio,
     **args,
 ):
@@ -40,7 +41,8 @@ def submit_training(
         ),
         axis=1,
     )
-
+    base_path = args["checkpoint_path"][0].split("/")[1]
+    os.makedirs(f"checkpoints/{base_path}", exist_ok=True)
     checkpoint_exists = args["checkpoint_path"].apply(lambda x: os.path.exists(x))
     print("Checkpoints skipped because they do already exist")
     args[checkpoint_exists]["checkpoint_path"].apply(print)
@@ -50,6 +52,7 @@ def submit_training(
     valid_args["block_main"] = block_main
     valid_args["timeout"] = timeout
     valid_args["batch_size"] = valid_args["activation"].map(batch_size)
+    valid_args["lr"] = valid_args["activation"].map(lr)
     valid_args["warmup_epochs"] = (valid_args["epochs"] * warmup_epochs_ratio).astype(
         int
     )

@@ -1,5 +1,6 @@
 import argparse
 from enum import Enum
+import os
 
 import torch
 from torch import nn
@@ -52,6 +53,7 @@ class ActivationSwitch(ConvertableEnum):
     SOFTPLUS_B10 = 16
     SOFTPLUS_B7 = 18
     SOFTPLUS_B5 = 15
+    SOFTPLUS_B3 = 19
     SOFTPLUS_B1 = 14
     LEAKY_RELU = 21
     RELU = 10
@@ -63,6 +65,7 @@ class DatasetSwitch(ConvertableEnum):
     IMAGENETTE = 202
     FASHION_MNIST = 203
     GRADS = 299
+
 
 class AugmentationSwitch(ConvertableEnum):
     EXP_VIS = 1  # used in exaplanation methods for visualizing the original image
@@ -85,14 +88,17 @@ def get_experiment_prefix(
     **args,
 ):
     name_list = []
-    name_list.append(dataset)
+    # name_list.append(dataset)
     name_list.append(model_name)
     name_list.append("_".join(map(str, layers)))
     name_list.append(activation)
     name_list.append(seed)
     name_list.append(l2_reg)
     name_list.append(img_size)
-    return EXPERIMENT_PREFIX_SEP.join(map(str, name_list))
+    return os.path.join(
+        str(dataset),
+        EXPERIMENT_PREFIX_SEP.join(map(str, name_list)),
+    )
 
 
 def get_save_path(

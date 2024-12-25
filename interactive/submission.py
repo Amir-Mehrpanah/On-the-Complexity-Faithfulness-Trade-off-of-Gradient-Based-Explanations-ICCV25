@@ -21,11 +21,12 @@ seed = [0]
 activation = [
     ActivationSwitch.RELU,
     ActivationSwitch.LEAKY_RELU,
-    ActivationSwitch.SOFTPLUS_B_1,
-    ActivationSwitch.SOFTPLUS_B1,
+    # ActivationSwitch.SOFTPLUS_B_1,
+    # ActivationSwitch.SOFTPLUS_B1,
+    # ActivationSwitch.SOFTPLUS_B3,
     ActivationSwitch.SOFTPLUS_B5,
-    ActivationSwitch.SOFTPLUS_B7,
-    ActivationSwitch.SOFTPLUS_B10,
+    # ActivationSwitch.SOFTPLUS_B7,
+    # ActivationSwitch.SOFTPLUS_B10,
 ]
 loss = [
     LossSwitch.CE,
@@ -46,10 +47,13 @@ model_name = [
 ]
 layers = [
     # [],
-    [1],
-    [2],
-    [3],
+    # [1],
+    # [2],
+    # [3],
     [4],
+    [5],
+    [6],
+    [7],
     # [1, 1, 1, 1],
     # [2, 2, 2, 2],
     # [3, 3, 3, 3],
@@ -85,13 +89,13 @@ img_size = [
     # 28,
     # 46,
     # 32,
-    64,
-    112,
+    # 64,
+    # 112,
     224,
 ]
 l2_reg = [
     0,
-    # 5e-3,
+    # 1e-2,
     # 1e-3,
 ]
 # %% submit training
@@ -100,13 +104,23 @@ batch_size = {
     ActivationSwitch.LEAKY_RELU: 256,
     ActivationSwitch.SOFTPLUS_B_1: 256,
     ActivationSwitch.SOFTPLUS_B1: 256,
+    ActivationSwitch.SOFTPLUS_B3: 256,
     ActivationSwitch.SOFTPLUS_B5: 256,
     ActivationSwitch.SOFTPLUS_B7: 256,
     ActivationSwitch.SOFTPLUS_B10: 256,
 }
-min_test_acc = [0.5]
+min_test_acc = [0.6]
 patience = [1]
-lr = [1e-3]
+lr = {
+    ActivationSwitch.RELU: 1e-4,
+    ActivationSwitch.LEAKY_RELU: 1e-4,
+    ActivationSwitch.SOFTPLUS_B_1: 1e-2,
+    ActivationSwitch.SOFTPLUS_B1: 1e-3,
+    ActivationSwitch.SOFTPLUS_B3: 3e-3,
+    ActivationSwitch.SOFTPLUS_B5: 1e-3,
+    ActivationSwitch.SOFTPLUS_B7: 7e-3,
+    ActivationSwitch.SOFTPLUS_B10: 1e-4,
+}
 ckpt_mod = [1]  # checkpoint if epoch % ckpt_mod == 0
 epochs = [100]
 lr_decay_gamma = [0.98]
@@ -148,20 +162,27 @@ batch_size = {
     ActivationSwitch.LEAKY_RELU: 64,
     ActivationSwitch.SOFTPLUS_B_1: 64,
     ActivationSwitch.SOFTPLUS_B1: 64,
+    ActivationSwitch.SOFTPLUS_B3: 64,
     ActivationSwitch.SOFTPLUS_B7: 64,
     ActivationSwitch.SOFTPLUS_B5: 64,
     ActivationSwitch.SOFTPLUS_B10: 64,
 }
 epoch = [0]
 num_distinct_images = [100]
-gaussian_noise_var = [1e-5, 1e-4, 1e-3, 1e-2, 1e-1]
+gaussian_noise_var = [
+    1e-5,
+    # 1e-4,
+    # 1e-3,
+    # 1e-2,
+    # 1e-1,
+]
 eval_only_on_test = [True]
 stats = [
     {
         "mean_rank": None,
-        "var_rank": None,
+        # "var_rank": None,
         "mean": None,
-        "var": None,
+        # "var": None,
         "correct": None,
         "image": None,
         "label": None,
@@ -196,9 +217,9 @@ submit_grads(
 
 
 # %% run measurements on grads
-hook_samples = [[13]]
+hook_samples = [[]]
 name = ["IMAGENETTE"]
-num_workers = [2]
+num_workers = [8]
 submit_measurements(
     name=name,
     timeout=timeout,
@@ -210,7 +231,7 @@ submit_measurements(
 )
 
 # %% visualize
-hook_samples = [[13]]
+hook_samples = [[]]
 keys = ["var", "mean", "var_rank", "mean_rank", "image"]
 visualize_hooks(DatasetSwitch.IMAGENETTE, hook_samples, keys)
 
@@ -236,15 +257,16 @@ os.chdir(cwd)
 import torch
 from src.models.utils import get_model
 
-g = 28
+g = 224
 model = get_model(
     input_shape=(3, g, g),
-    model_name=ModelSwitch.SIMPLE_CNN_SK,
+    model_name=ModelSwitch.SIMPLE_CNN_DEPTH,
     num_classes=10,
     activation_fn=torch.nn.ReLU(),
     bias=False,
     pre_act=False,
-    layers=[],
+    layers=[7],
 )
 x = torch.randn(1, 3, g, g)
+paramsnorm = torch.norm(torch.cat([p.view(-1) for p in model.parameters()]))
 model(x)

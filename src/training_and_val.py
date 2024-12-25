@@ -208,6 +208,11 @@ def train(dataloader, model, loss_fn, optimizer, epoch, device, writer):
     if writer is not None:
         writer.add_scalar("Loss/train_epoch", total_loss, epoch)
         writer.add_scalar("Accuracy/train_epoch", total_correct, epoch)
+        writer.add_scalar(
+            "ParamsNorm",
+            torch.norm(torch.cat([p.view(-1) for p in model.parameters()])),
+            epoch,
+        )
     print(f"train accuracy: {(100*total_correct):>0.1f}%, train loss: {total_loss:>8f}")
     return total_loss, total_correct
 
@@ -383,9 +388,13 @@ def early_stopping_criteria(
     min_test_acc,
     tol,
 ):
-    # assure all models are trained equally
-    # and (test_acc - old_test_acc < tol)
-    return (epoch > warmup_epochs) and (test_acc > min_test_acc)
+    #
+    # to ensure all models are trained equally
+    return (
+        (epoch > warmup_epochs)
+        and (test_acc > min_test_acc)
+        # and (test_acc - old_test_acc < tol)
+    )
 
 
 def save_ckpt_criteria(
@@ -399,8 +408,8 @@ def save_ckpt_criteria(
     return (
         (epoch % ckpt_mod == 0)
         and (epoch > warmup_epochs)
-        # and (test_acc > old_test_acc)
         and (test_acc > min_test_acc)
+        # and (test_acc > old_test_acc)
     )
 
 
