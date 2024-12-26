@@ -90,7 +90,7 @@ model_nice_names = {
 quants
 
 
-# %% def density_depth_inputsize
+# %% defs
 def density_depth_inputsize(
     quants, spec_type="mr_spectral_density", for_noise_scale=1e-05
 ):

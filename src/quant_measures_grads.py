@@ -32,7 +32,7 @@ def spectral_density(image):
     radial_profile = radial_sum / radial_count  # Average power in each radius
 
     radial_profile = radial_profile[1:]  # Drop the zeroth element
-    radial_profile = radial_profile / min(
+    radial_profile = radial_profile / np.max(
         radial_profile.sum(), 1e-5
     )  # Normalize and avoid division by zero
 
@@ -41,9 +41,9 @@ def spectral_density(image):
 
 def measure_grads(data):
     results = {
-        "cosine_similarity": cosine_similarity(data),
         "mr_spectral_density": spectral_density(data["mean_rank"]),
         "m_spectral_density": spectral_density(data["mean"]),
+        # "cosine_similarity": cosine_similarity(data),
         # "vr_spectral_density": spectral_density(data["var_rank"]),
         # "v_spectral_density": spectral_density(data["var"]),
     }
@@ -94,7 +94,7 @@ def main(
             address = data["address"][0]
             parent_dir = os.path.basename(os.path.dirname(address))
             os.system(f"rsync -a {address} {hooks_dir}/{parent_dir}/")  # faster
-            # torch.save(data, f"{hooks_dir}/{data['address']}")
+            # torch.save(data, f"{hooks_dir}/{data['address']}") # slower
 
         if i % q10_dataloader == 0:
             print(f"{i / len(dataloader):.2%} is processed")

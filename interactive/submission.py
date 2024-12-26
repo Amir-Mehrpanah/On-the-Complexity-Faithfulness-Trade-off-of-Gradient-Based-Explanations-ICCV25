@@ -156,21 +156,22 @@ submit_training(
 )
 
 # %% submit grads
-num_batches = [2]
+num_batches = [1]
 batch_size = {
-    ActivationSwitch.RELU: 64,
-    ActivationSwitch.LEAKY_RELU: 64,
-    ActivationSwitch.SOFTPLUS_B_1: 64,
-    ActivationSwitch.SOFTPLUS_B1: 64,
-    ActivationSwitch.SOFTPLUS_B3: 64,
-    ActivationSwitch.SOFTPLUS_B7: 64,
-    ActivationSwitch.SOFTPLUS_B5: 64,
-    ActivationSwitch.SOFTPLUS_B10: 64,
+    ActivationSwitch.RELU: 1,
+    ActivationSwitch.LEAKY_RELU: 1,
+    ActivationSwitch.SOFTPLUS_B_1: 1,
+    ActivationSwitch.SOFTPLUS_B1: 1,
+    ActivationSwitch.SOFTPLUS_B3: 1,
+    ActivationSwitch.SOFTPLUS_B7: 1,
+    ActivationSwitch.SOFTPLUS_B5: 1,
+    ActivationSwitch.SOFTPLUS_B10: 1,
 }
 epoch = [0]
 num_distinct_images = [100]
 gaussian_noise_var = [
-    1e-5,
+    0.0,
+    # 1e-5,
     # 1e-4,
     # 1e-3,
     # 1e-2,
