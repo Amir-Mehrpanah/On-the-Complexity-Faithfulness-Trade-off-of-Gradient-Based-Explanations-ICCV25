@@ -100,32 +100,17 @@ l2_reg = [
     # 1e-2,
     # 1e-3,
 ]
-splr = 1e-3
-lr = {
-    ActivationSwitch.RELU: splr / 10,
-    ActivationSwitch.LEAKY_RELU: splr / 10,
-    ActivationSwitch.SOFTPLUS_B_1: splr,
-    ActivationSwitch.SOFTPLUS_B1: splr,
-    ActivationSwitch.SOFTPLUS_B3: splr,
-    ActivationSwitch.SOFTPLUS_B5: splr,
-    ActivationSwitch.SOFTPLUS_B7: splr,
-    ActivationSwitch.SOFTPLUS_B10: splr,
-    ActivationSwitch.SOFTPLUS_B50: splr,
-    ActivationSwitch.SOFTPLUS_B100: splr,
-}
+lr = [
+    5e-3,
+    1e-3,
+    5e-4,
+    1e-4,
+    4e-5,
+    5e-5,
+    # 1e-5,
+]
 # %% submit training
-batch_size = {
-    ActivationSwitch.RELU: 256,
-    ActivationSwitch.LEAKY_RELU: 256,
-    ActivationSwitch.SOFTPLUS_B_1: 256,
-    ActivationSwitch.SOFTPLUS_B1: 256,
-    ActivationSwitch.SOFTPLUS_B3: 256,
-    ActivationSwitch.SOFTPLUS_B5: 256,
-    ActivationSwitch.SOFTPLUS_B7: 256,
-    ActivationSwitch.SOFTPLUS_B10: 256,
-    ActivationSwitch.SOFTPLUS_B50: 256,
-    ActivationSwitch.SOFTPLUS_B100: 256,
-}
+batch_size = [256]
 min_test_acc = [0.6]
 patience = [1]
 
@@ -165,18 +150,9 @@ submit_training(
 
 # %% submit grads
 num_batches = [1]
-batch_size = {
-    ActivationSwitch.RELU: 1,
-    ActivationSwitch.LEAKY_RELU: 1,
-    ActivationSwitch.SOFTPLUS_B_1: 1,
-    ActivationSwitch.SOFTPLUS_B1: 1,
-    ActivationSwitch.SOFTPLUS_B3: 1,
-    ActivationSwitch.SOFTPLUS_B7: 1,
-    ActivationSwitch.SOFTPLUS_B5: 1,
-    ActivationSwitch.SOFTPLUS_B10: 1,
-}
+batch_size = [1]
 epoch = [0]
-num_distinct_images = [100]
+num_distinct_images = [1000]
 gaussian_noise_var = [
     0.0,
     # 1e-5,

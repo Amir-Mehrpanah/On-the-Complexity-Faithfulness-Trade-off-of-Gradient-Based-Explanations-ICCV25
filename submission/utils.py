@@ -17,12 +17,12 @@ def submit_training(
     block_main,
     port,
     timeout,
-    batch_size,
-    lr,
     warmup_epochs_ratio,
+    # batch_size,
+    # lr,
     **args,
 ):
-    now = datetime.now().strftime("%Y%m%d-%H")
+    # now = datetime.now().strftime("%Y%m%d-%H")
     args = pd.DataFrame(
         list(
             product(
@@ -31,8 +31,8 @@ def submit_training(
         ),
         columns=args.keys(),
     )
-    args["lr"] = args["activation"].map(lr)
-    args["batch_size"] = args["activation"].map(batch_size)
+    # args["lr"] = args["activation"].map(lr)
+    # args["batch_size"] = args["activation"].map(batch_size)
     args["tb_postfix"] = args.apply(
         lambda x: get_experiment_prefix(**x),
         axis=1,
@@ -66,8 +66,8 @@ def submit_grads(
     block_main,
     port,
     timeout,
-    batch_size,
-    lr,
+    # batch_size,
+    # lr,
     **args,
 ):
     print(f"time: {datetime.now()}")
@@ -83,8 +83,8 @@ def submit_grads(
     args["port"] = port
     args["block_main"] = block_main
     args["timeout"] = timeout
-    args["lr"] = args["activation"].map(lr)
-    args["batch_size"] = args["activation"].map(batch_size)
+    # args["lr"] = args["activation"].map(lr)
+    # args["batch_size"] = args["activation"].map(batch_size)
     args["experiment_prefix"] = args.apply(
         lambda x: get_experiment_prefix(**x)
         + f"{EXPERIMENT_PREFIX_SEP}{x.gaussian_noise_var}",
@@ -208,7 +208,11 @@ def execute_job_submission(
             return results
 
 
-def visualize_hooks(Dataset, hook_samples, keys):
+def visualize_hooks(
+    Dataset,
+    hook_samples,
+    keys,
+):
     for j in hook_samples[0]:
         os.makedirs(f".tmp/visualizations/{j}", exist_ok=True)
         glob_path = f".tmp/quants/hooks/{Dataset}*/{j}.pt"
