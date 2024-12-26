@@ -31,6 +31,8 @@ def submit_training(
         ),
         columns=args.keys(),
     )
+    args["lr"] = args["activation"].map(lr)
+    args["batch_size"] = args["activation"].map(batch_size)
     args["tb_postfix"] = args.apply(
         lambda x: get_experiment_prefix(**x),
         axis=1,
@@ -51,8 +53,6 @@ def submit_training(
     valid_args["port"] = port
     valid_args["block_main"] = block_main
     valid_args["timeout"] = timeout
-    valid_args["batch_size"] = valid_args["activation"].map(batch_size)
-    valid_args["lr"] = valid_args["activation"].map(lr)
     valid_args["warmup_epochs"] = (valid_args["epochs"] * warmup_epochs_ratio).astype(
         int
     )
@@ -67,6 +67,7 @@ def submit_grads(
     port,
     timeout,
     batch_size,
+    lr,
     **args,
 ):
     print(f"time: {datetime.now()}")
@@ -82,6 +83,7 @@ def submit_grads(
     args["port"] = port
     args["block_main"] = block_main
     args["timeout"] = timeout
+    args["lr"] = args["activation"].map(lr)
     args["batch_size"] = args["activation"].map(batch_size)
     args["experiment_prefix"] = args.apply(
         lambda x: get_experiment_prefix(**x)

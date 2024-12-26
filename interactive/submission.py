@@ -24,9 +24,11 @@ activation = [
     # ActivationSwitch.SOFTPLUS_B_1,
     # ActivationSwitch.SOFTPLUS_B1,
     # ActivationSwitch.SOFTPLUS_B3,
-    ActivationSwitch.SOFTPLUS_B5,
+    # ActivationSwitch.SOFTPLUS_B5,
     # ActivationSwitch.SOFTPLUS_B7,
-    # ActivationSwitch.SOFTPLUS_B10,
+    ActivationSwitch.SOFTPLUS_B10,
+    ActivationSwitch.SOFTPLUS_B50,
+    ActivationSwitch.SOFTPLUS_B100,
 ]
 loss = [
     LossSwitch.CE,
@@ -50,10 +52,10 @@ layers = [
     # [1],
     # [2],
     # [3],
-    [4],
+    # [4],
     [5],
-    [6],
-    [7],
+    # [6],
+    # [7],
     # [1, 1, 1, 1],
     # [2, 2, 2, 2],
     # [3, 3, 3, 3],
@@ -98,6 +100,19 @@ l2_reg = [
     # 1e-2,
     # 1e-3,
 ]
+splr = 1e-3
+lr = {
+    ActivationSwitch.RELU: splr / 10,
+    ActivationSwitch.LEAKY_RELU: splr / 10,
+    ActivationSwitch.SOFTPLUS_B_1: splr,
+    ActivationSwitch.SOFTPLUS_B1: splr,
+    ActivationSwitch.SOFTPLUS_B3: splr,
+    ActivationSwitch.SOFTPLUS_B5: splr,
+    ActivationSwitch.SOFTPLUS_B7: splr,
+    ActivationSwitch.SOFTPLUS_B10: splr,
+    ActivationSwitch.SOFTPLUS_B50: splr,
+    ActivationSwitch.SOFTPLUS_B100: splr,
+}
 # %% submit training
 batch_size = {
     ActivationSwitch.RELU: 256,
@@ -108,19 +123,12 @@ batch_size = {
     ActivationSwitch.SOFTPLUS_B5: 256,
     ActivationSwitch.SOFTPLUS_B7: 256,
     ActivationSwitch.SOFTPLUS_B10: 256,
+    ActivationSwitch.SOFTPLUS_B50: 256,
+    ActivationSwitch.SOFTPLUS_B100: 256,
 }
 min_test_acc = [0.6]
 patience = [1]
-lr = {
-    ActivationSwitch.RELU: 1e-4,
-    ActivationSwitch.LEAKY_RELU: 1e-4,
-    ActivationSwitch.SOFTPLUS_B_1: 1e-2,
-    ActivationSwitch.SOFTPLUS_B1: 1e-3,
-    ActivationSwitch.SOFTPLUS_B3: 3e-3,
-    ActivationSwitch.SOFTPLUS_B5: 1e-3,
-    ActivationSwitch.SOFTPLUS_B7: 7e-3,
-    ActivationSwitch.SOFTPLUS_B10: 1e-4,
-}
+
 ckpt_mod = [1]  # checkpoint if epoch % ckpt_mod == 0
 epochs = [100]
 lr_decay_gamma = [0.98]
@@ -214,6 +222,7 @@ submit_grads(
     epoch=epoch,
     num_distinct_images=num_distinct_images,
     l2_reg=l2_reg,
+    lr=lr,
 )
 
 

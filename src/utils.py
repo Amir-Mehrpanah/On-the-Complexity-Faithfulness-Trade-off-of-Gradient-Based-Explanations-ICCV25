@@ -52,6 +52,7 @@ class ActivationSwitch(ConvertableEnum):
     SOFTPLUS_B100 = 17
     SOFTPLUS_B10 = 16
     SOFTPLUS_B7 = 18
+    SOFTPLUS_B50 = 20
     SOFTPLUS_B5 = 15
     SOFTPLUS_B3 = 19
     SOFTPLUS_B1 = 14
@@ -85,6 +86,7 @@ def get_experiment_prefix(
     seed,
     l2_reg,
     img_size,
+    lr,
     **args,
 ):
     name_list = []
@@ -95,6 +97,7 @@ def get_experiment_prefix(
     name_list.append(seed)
     name_list.append(l2_reg)
     name_list.append(img_size)
+    name_list.append(lr)
     return os.path.join(
         str(dataset),
         EXPERIMENT_PREFIX_SEP.join(map(str, name_list)),

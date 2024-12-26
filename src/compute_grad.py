@@ -250,7 +250,7 @@ def compute_grad_and_save(
             grad_vars = []
             corrects = []
 
-        if num_distinct_images > 0 and i // num_batches >= num_distinct_images:
+        if (num_distinct_images > 0) and (i // num_batches >= num_distinct_images - 1):
             break
 
 

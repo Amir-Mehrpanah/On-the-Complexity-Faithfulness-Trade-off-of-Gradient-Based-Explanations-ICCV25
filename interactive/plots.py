@@ -24,6 +24,7 @@ temp = pd.DataFrame(
         "seed",
         "l2reg",
         "input_size",
+        "lr",
         "ns",
     ],
 )
@@ -39,6 +40,7 @@ quants = quants.set_index(
         "input_size",
         "noise_scale",
         "model_name",
+        "lr",
         "index",
     ]
 )
@@ -56,12 +58,12 @@ activation_nice_names = {
 activations = [
     "RELU",
     "LEAKY_RELU",
-    "SOFTPLUS_B10",
-    "SOFTPLUS_B7",
+    # "SOFTPLUS_B10",
+    # "SOFTPLUS_B7",
     "SOFTPLUS_B5",
-    "SOFTPLUS_B3",
-    "SOFTPLUS_B1",
-    "SOFTPLUS_B_1",
+    # "SOFTPLUS_B3",
+    # "SOFTPLUS_B1",
+    # "SOFTPLUS_B_1",
 ]
 colors = plt.cm.tab10(np.arange(len(activations)))
 activation_colors = {
@@ -95,11 +97,11 @@ def density_depth_inputsize(
     quants, spec_type="mr_spectral_density", for_noise_scale=1e-05
 ):
     temp = quants.pivot_table(
-        columns=["input_size", "layers", "activation", "noise_scale"],
+        columns=["input_size", "layers", "activation", "noise_scale", "lr"],
         values=spec_type,
         aggfunc=np.mean,
     )
-    factor = 3
+    factor = 2.5
     n_rows = len(temp.columns.levels[1])
     n_cols = len(temp.columns.levels[0])
     fig, axes = plt.subplots(
@@ -145,16 +147,20 @@ def density_depth_inputsize(
                 ax.set_xscale("log")
                 ax.set_yscale("log")
                 for color_indx, activation in enumerate(activations):
-                    try:
-                        ax.plot(
-                            temp[input_size][layers][activation][noise_scale].values[0],
-                            color=activation_colors[activation],
-                        )
-                    except KeyError:
-                        print(
-                            f"missing {input_size} {layers} {activation} {noise_scale}"
-                        )
-                        pass
+                    for rid, lr in enumerate(temp.columns.levels[4]):
+                        try:
+                            ax.plot(
+                                temp[input_size][layers][activation][noise_scale][
+                                    lr
+                                ].values[0],
+                                color=activation_colors[activation],
+                                # alpha=(rid + 1) / len(temp.columns.levels[4]),
+                            )
+                        except KeyError:
+                            print(
+                                f"missing {input_size} {layers} {activation} {noise_scale}"
+                            )
+                            pass
 
                     if lid == 0 and sid == 0:
                         ax.plot(
@@ -243,9 +249,15 @@ def expected_freq_depth(quants, spec_type="mr_expected_spectral_density"):
         values=spec_type,
         aggfunc=np.mean,
     )
-
-    factor = 4
+    temp_var = quants.pivot_table(
+        columns=["input_size", "layers", "noise_scale", "activation"],
+        values=spec_type,
+        aggfunc=np.var,
+    )
+    factor = 2.5
     width = 0.1
+    min_val = np.inf
+    max_val = -np.inf
     for sid, input_size in enumerate(temp.columns.levels[0]):
         for noise_scale in temp.columns.levels[2]:
             fig, ax = plt.subplots(
@@ -259,13 +271,47 @@ def expected_freq_depth(quants, spec_type="mr_expected_spectral_density"):
             for lid, layers in enumerate(temp.columns.levels[1]):
                 for color_indx, activation in enumerate(activations):
                     try:
+
+                        if (
+                            min_val
+                            > temp[input_size][layers][noise_scale][activation].values[
+                                0
+                            ]
+                        ):
+                            min_val = temp[input_size][layers][noise_scale][
+                                activation
+                            ].values[0]
+
+                        if (
+                            max_val
+                            < temp[input_size][layers][noise_scale][activation].values[
+                                0
+                            ]
+                        ):
+                            max_val = temp[input_size][layers][noise_scale][
+                                activation
+                            ].values[0]
+
                         ax.bar(
-                            x=lid + (color_indx - 2) * width,
+                            x=lid + (color_indx - 1) * width,
                             height=temp[input_size][layers][noise_scale][
+                                activation
+                            ].values[0],
+                            yerr=temp_var[input_size][layers][noise_scale][
                                 activation
                             ].values[0],
                             color=activation_colors[activation],
                             width=width,
+                        )
+                        print(
+                            input_size,
+                            layers,
+                            noise_scale,
+                            activation,
+                            "var",
+                            temp_var[input_size][layers][noise_scale][
+                                activation
+                            ].values[0],
                         )
                     except KeyError:
                         print(
@@ -280,6 +326,7 @@ def expected_freq_depth(quants, spec_type="mr_expected_spectral_density"):
                     label=activation_nice_names[activation],
                     color=activation_colors[activation],
                 )
+            ax.set_ylim(min_val * 0.99, max_val * 1.01)
             ax.legend(loc="upper center")
             plt.savefig(f"{output_dir}{dataset}_ef_{input_size}_{noise_scale}.pdf")
             plt.close()
@@ -352,15 +399,18 @@ def cosine_similarity(
                     ax.legend()
 
 
+markers = ["o", "s", "D", "v", "^", "<", ">", "p", "P", "*", "X", "d", "H", "h"]
+
+
 def density_depth_noisescale(
     quants, spec_type="mr_spectral_density", for_input_size=28
 ):
     temp = quants.pivot_table(
-        columns=["input_size", "layers", "activation", "noise_scale"],
+        columns=["input_size", "layers", "activation", "noise_scale", "lr"],
         values=spec_type,
         aggfunc=np.mean,
     )
-    factor = 3
+    factor = 2.5
     n_rows = len(temp.columns.levels[1])
     n_cols = len(temp.columns.levels[3])
     fig, axes = plt.subplots(
@@ -376,12 +426,16 @@ def density_depth_noisescale(
     for sid, input_size in enumerate(temp.columns.levels[0]):
         for nid, noise_scale in enumerate(temp.columns.levels[3]):
             for lid, layers in enumerate(temp.columns.levels[1]):
+                # skip keys
 
                 if input_size != for_input_size:
                     continue
 
                 if len(temp.columns.levels[3]) == 1:
-                    ax = axes[lid]
+                    if len(temp.columns.levels[1]) == 1:
+                        ax = axes
+                    else:
+                        ax = axes[lid]
                 else:
                     ax = axes[lid, nid]
 
@@ -406,16 +460,32 @@ def density_depth_noisescale(
                 ax.set_xscale("log")
                 ax.set_yscale("log")
                 for color_indx, activation in enumerate(activations):
-                    try:
-                        ax.plot(
-                            temp[input_size][layers][activation][noise_scale].values[0],
-                            color=activation_colors[activation],
-                        )
-                    except KeyError:
-                        print(
-                            f"missing {input_size} {layers} {activation} {noise_scale}"
-                        )
-                        pass
+                    for rid, lr in enumerate(temp.columns.levels[4]):
+                        try:
+                            ax.plot(
+                                temp[input_size][layers][activation][noise_scale][
+                                    lr
+                                ].values[0],
+                                color=activation_colors[activation],
+                                # marker=markers[rid],
+                                # markersize=0.1,
+                                # alpha=0.5,
+                            )
+                            print(
+                                "addr",
+                                input_size,
+                                layers,
+                                activation,
+                                noise_scale,
+                                rid,
+                                markers[rid],
+                                lr,
+                            )
+                        except KeyError:
+                            print(
+                                f"missing {input_size} {layers} {activation} {noise_scale}"
+                            )
+                            pass
 
                     if lid == 0 and nid == 0:
                         ax.plot(
@@ -432,7 +502,7 @@ expected_freq_depth(quants)
 # %% plot density_depth_inputsize
 for ns in quants.index.levels[5]:
     for spec_type in [
-        "m_expected_spectral_density",
+        # "m_expected_spectral_density",
         "mr_spectral_density",
         # "v_expected_spectral_density",
         # "vr_spectral_density",
@@ -444,7 +514,7 @@ for ns in quants.index.levels[5]:
 # %% plot density_depth_noisescale
 for isz in quants.index.levels[4]:
     for spec_type in [
-        "m_expected_spectral_density",
+        # "m_expected_spectral_density",
         "mr_spectral_density",
         # "v_expected_spectral_density",
         # "vr_spectral_density",
@@ -573,12 +643,16 @@ def expected_freq_model(quants, spec_type="mr_expected_spectral_density"):
                     pass
 
         for model in temp.columns.levels[2]:
+            xlim = ax.get_xlim()
+            ylim = ax.get_ylim()
             ax.bar(
                 height=0,
                 x=1,
                 label=model_nice_names[model],
                 color=model_colors[model],
             )
+            ax.set_xlim(xlim)
+            ax.set_ylim(ylim)
         ax.legend(loc="upper center")
         plt.show()
         # plt.savefig(f"{output_dir}{dataset}_ef_{input_size}_{noise_scale}.pdf")
