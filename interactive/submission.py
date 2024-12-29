@@ -22,9 +22,9 @@ activation = [
     ActivationSwitch.RELU,
     ActivationSwitch.LEAKY_RELU,
     # ActivationSwitch.SOFTPLUS_B_1,
-    # ActivationSwitch.SOFTPLUS_B1,
+    ActivationSwitch.SOFTPLUS_B1,
     # ActivationSwitch.SOFTPLUS_B3,
-    # ActivationSwitch.SOFTPLUS_B5,
+    ActivationSwitch.SOFTPLUS_B5,
     # ActivationSwitch.SOFTPLUS_B7,
     ActivationSwitch.SOFTPLUS_B10,
     ActivationSwitch.SOFTPLUS_B50,
@@ -91,9 +91,9 @@ img_size = [
     # 28,
     # 46,
     # 32,
-    # 64,
+    64,
     # 112,
-    224,
+    # 224,
 ]
 l2_reg = [
     0,

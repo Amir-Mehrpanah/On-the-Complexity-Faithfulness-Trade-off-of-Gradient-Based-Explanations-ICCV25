@@ -54,17 +54,22 @@ activation_nice_names = {
     "SOFTPLUS_B5": "Softplus 5",
     "SOFTPLUS_B7": "Softplus 7",
     "SOFTPLUS_B10": "Softplus 10",
+    "SOFTPLUS_B50": "Softplus 50",
+    "SOFTPLUS_B100": "Softplus 100",
 }
 activations = [
     "RELU",
     "LEAKY_RELU",
-    # "SOFTPLUS_B10",
+    "SOFTPLUS_B10",
     # "SOFTPLUS_B7",
     "SOFTPLUS_B5",
+    "SOFTPLUS_B50",
+    "SOFTPLUS_B100",
     # "SOFTPLUS_B3",
     # "SOFTPLUS_B1",
     # "SOFTPLUS_B_1",
 ]
+markers = ["o", "s", "D", "v", "^", "<", ">", "p", "P", "*", "X", "d", "H", "h"]
 colors = plt.cm.tab10(np.arange(len(activations)))
 activation_colors = {
     activation: color for activation, color in zip(activations, colors)
@@ -399,9 +404,6 @@ def cosine_similarity(
                     ax.legend()
 
 
-markers = ["o", "s", "D", "v", "^", "<", ">", "p", "P", "*", "X", "d", "H", "h"]
-
-
 def density_depth_noisescale(
     quants, spec_type="mr_spectral_density", for_input_size=28
 ):
@@ -666,5 +668,109 @@ for spec_type in [
     "v_expected_spectral_density",
 ]:
     expected_freq_model(quants, spec_type=spec_type)
+
+
+# %%
+
+
+def plot_activations(quants, spec_type, for_lr=0.001):
+    temp = quants.pivot_table(
+        columns=["input_size", "layers", "activation", "noise_scale", "lr"],
+        values=spec_type,
+        aggfunc="count",
+    )
+    print(temp)
+    temp = quants.pivot_table(
+        columns=["input_size", "layers", "activation", "noise_scale", "lr"],
+        values=spec_type,
+        aggfunc="mean",
+    )
+    factor = 5
+    n_rows = len(temp.columns.levels[1])
+    n_cols = len(temp.columns.levels[0])
+    fig, axes = plt.subplots(
+        nrows=n_rows,
+        ncols=n_cols,
+        sharex=True,
+        # sharey=True,
+        figsize=(n_cols * factor * 1.1, n_rows * factor),
+        tight_layout=True,
+    )
+    spec = "mean rank" if spec_type == "mr_spectral_density" else "var rank"
+    # fig.suptitle(f"{spec} at {for_noise_scale}", fontsize=16)
+    for sid, input_size in enumerate(temp.columns.levels[0]):
+        for nid, noise_scale in enumerate(temp.columns.levels[3]):
+            for lid, layers in enumerate(temp.columns.levels[1]):
+                if (
+                    len(temp.columns.levels[0]) == 1
+                    and len(temp.columns.levels[1]) == 1
+                ):
+                    ax = axes
+                elif len(temp.columns.levels[0]) == 1:
+                    ax = axes[lid]
+                else:
+                    ax = axes[lid, sid]
+
+                if lid == 0:
+                    ax.set_title(f"density at size {input_size}")
+                if sid == 0:
+                    # ax.set_ylabel("spectral density")
+                    ax.set_ylabel(f"depth {layers}")
+                    # ax.text(
+                    #     -0.3,
+                    #     0.5,
+                    #     f"image size {input_size}",
+                    #     va="center",
+                    #     ha="center",
+                    #     rotation=90,
+
+                for color_indx, activation in enumerate(activations):
+                    for rid, lr in enumerate(temp.columns.levels[4]):
+                        try:
+                            ax.plot(
+                                temp[input_size][layers][activation][noise_scale][
+                                    lr
+                                ].values[0],
+                                color=activation_colors[activation],
+                                alpha=0.5,
+                                marker=markers[rid],
+                                markersize=0.3,
+                            )
+                            print(
+                                "addr",
+                                input_size,
+                                layers,
+                                activation,
+                                noise_scale,
+                                rid,
+                                markers[rid],
+                                lr,
+                            )
+                        except KeyError:
+                            print(
+                                f"missing {input_size} {layers} {activation} {noise_scale}"
+                            )
+                            pass
+
+                    if lid == 0 and sid == 0:
+                        ax.plot(
+                            [],
+                            label=activation_nice_names[activation],
+                            color=activation_colors[activation],
+                        )
+                        ax.legend()
+
+                if lid == n_rows - 1:
+                    ax.set_xlabel("frequency")
+
+                ax.set_xscale("log")
+                ax.set_yscale("log")
+
+
+plot_activations(
+    quants,
+    spec_type="mr_spectral_density",
+)
+plt.savefig(f"{output_dir}{dataset}_activations.pdf")
 
 # %%
