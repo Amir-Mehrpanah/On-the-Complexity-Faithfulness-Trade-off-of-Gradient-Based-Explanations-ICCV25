@@ -98,10 +98,11 @@ def get_experiment_prefix(
     name_list.append(activation)
     name_list.append(seed)
     name_list.append(l2_reg)
-    name_list.append(img_size)
+    # name_list.append(img_size)
     name_list.append(lr)
     return os.path.join(
         str(dataset),
+        str(img_size),
         EXPERIMENT_PREFIX_SEP.join(map(str, name_list)),
     )
 
@@ -128,10 +129,10 @@ def save_pth(model, path):
 
 def convert_str_to_activation_fn(activation):
     str_activation = str(activation)
-    
+
     if "LEAKY_RELU" in str_activation:
         return nn.LeakyReLU()
-    
+
     if "RELU" in str_activation:
         return nn.ReLU()
 

@@ -18,8 +18,6 @@ def submit_training(
     port,
     timeout,
     warmup_epochs_ratio,
-    # batch_size,
-    # lr,
     **args,
 ):
     # now = datetime.now().strftime("%Y%m%d-%H")
@@ -31,8 +29,6 @@ def submit_training(
         ),
         columns=args.keys(),
     )
-    # args["lr"] = args["activation"].map(lr)
-    # args["batch_size"] = args["activation"].map(batch_size)
     args["tb_postfix"] = args.apply(
         lambda x: get_experiment_prefix(**x),
         axis=1,
@@ -43,8 +39,9 @@ def submit_training(
         ),
         axis=1,
     )
-    base_path = args["checkpoint_path"][0].split("/")[1]
-    os.makedirs(f"checkpoints/{base_path}", exist_ok=True)
+    base_path = os.path.dirname(args["checkpoint_path"][0])
+    os.makedirs(base_path, exist_ok=True)
+    
     checkpoint_exists = args["checkpoint_path"].apply(lambda x: os.path.exists(x))
     print("Checkpoints skipped because they do already exist")
     args[checkpoint_exists]["checkpoint_path"].apply(print)
@@ -66,8 +63,6 @@ def submit_grads(
     block_main,
     port,
     timeout,
-    # batch_size,
-    # lr,
     **args,
 ):
     print(f"time: {datetime.now()}")
@@ -83,8 +78,6 @@ def submit_grads(
     args["port"] = port
     args["block_main"] = block_main
     args["timeout"] = timeout
-    # args["lr"] = args["activation"].map(lr)
-    # args["batch_size"] = args["activation"].map(batch_size)
     args["experiment_prefix"] = args.apply(
         lambda x: get_experiment_prefix(**x)
         + f"{EXPERIMENT_PREFIX_SEP}{x.gaussian_noise_var}",
