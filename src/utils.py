@@ -58,6 +58,8 @@ class ActivationSwitch(ConvertableEnum):
     SOFTPLUS_B1 = 14
     LEAKY_RELU = 21
     RELU = 10
+    SIGMOID = 22
+    TANH = 23
 
 
 class DatasetSwitch(ConvertableEnum):
@@ -126,10 +128,18 @@ def save_pth(model, path):
 
 def convert_str_to_activation_fn(activation):
     str_activation = str(activation)
+    
     if "LEAKY_RELU" in str_activation:
         return nn.LeakyReLU()
+    
     if "RELU" in str_activation:
         return nn.ReLU()
+
+    if "SIGMOID" in str_activation:
+        return nn.Sigmoid()
+
+    if "TANH" in str_activation:
+        return nn.Tanh()
 
     if "SOFTPLUS" in str_activation:
         beta = str_activation.replace("SOFTPLUS_B", "")

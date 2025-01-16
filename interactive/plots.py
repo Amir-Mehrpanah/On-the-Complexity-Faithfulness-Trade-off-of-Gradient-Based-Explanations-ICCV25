@@ -8,7 +8,10 @@ import os
 os.chdir("/home/x_amime/x_amime/projects/kernel-view-to-explainability/")
 
 output_dir = ".tmp/visualizations/paper/"
-dataset = "IMAGENETTE"
+dataset = [
+    # "IMAGENETTE_122_beta_1k",
+    "IMAGENETTE_224_depth_1k"
+][0]
 quants_path = f".tmp/quants/{dataset}::quants.pt"
 quants = torch.load(quants_path)
 quants = pd.DataFrame(quants)
@@ -160,6 +163,28 @@ def density_depth_inputsize(
                                 ].values[0],
                                 color=activation_colors[activation],
                                 # alpha=(rid + 1) / len(temp.columns.levels[4]),
+                            )
+                            vline = len(
+                                    temp[input_size][layers][activation][noise_scale][lr].values[0]
+                                )*0.5
+                            print(
+                                "addr",
+                                input_size,
+                                layers,
+                                activation,
+                                noise_scale,
+                                rid,
+                                markers[rid],
+                                lr,
+                                vline,
+                            )
+                            ax.vlines(
+                                x=vline,  
+                                ymin=0,
+                                ymax=1,
+                                color="r",
+                                linestyle="--",
+                                alpha=0.5,
                             )
                         except KeyError:
                             print(
@@ -685,7 +710,7 @@ def plot_activations(quants, spec_type, for_lr=0.001):
         values=spec_type,
         aggfunc="mean",
     )
-    factor = 5
+    factor = 3
     n_rows = len(temp.columns.levels[1])
     n_cols = len(temp.columns.levels[0])
     fig, axes = plt.subplots(
@@ -726,6 +751,21 @@ def plot_activations(quants, spec_type, for_lr=0.001):
 
                 for color_indx, activation in enumerate(activations):
                     for rid, lr in enumerate(temp.columns.levels[4]):
+                        if lr != "0.001":
+                            continue
+                        # if activation == "SOFTPLUS_B5" and lr != "0.001":
+                        #     continue
+                        # if activation == "SOFTPLUS_B10" and lr != "0.001":
+                        #     continue
+                        # if activation == "SOFTPLUS_B50" and lr == "0.005":
+                        #     continue
+                        # if activation == "SOFTPLUS_B100" and lr == "0.005":
+                        #     continue
+                        # if activation == "RELU" and lr != "0.0001":
+                        #     continue
+                        # if activation == "LEAKY_RELU" and lr != "0.0001":
+                        #     continue
+
                         try:
                             ax.plot(
                                 temp[input_size][layers][activation][noise_scale][

@@ -183,7 +183,7 @@ def get_inputs():
 def train(dataloader, model, loss_fn, optimizer, epoch, device, writer):
     model.train()
     size = len(dataloader.dataset)
-    total_loss, total_correct = 0, 0
+    total_loss, total_correct, grad_norm = 0, 0, 0
     for step, (x, y) in enumerate(dataloader):
         optimizer.zero_grad()
         x, y = x.to(device), y.to(device)
@@ -193,6 +193,9 @@ def train(dataloader, model, loss_fn, optimizer, epoch, device, writer):
         total_loss += loss.item()
         loss = loss / x.size(0)
         loss.backward()
+        grad_norm += torch.norm(
+            torch.cat([p.grad.view(-1) for p in model.parameters()])
+        ).item()
         optimizer.step()
 
         correct = (pred.argmax(1) == y).type(torch.float).sum().item()
@@ -205,12 +208,18 @@ def train(dataloader, model, loss_fn, optimizer, epoch, device, writer):
 
     total_loss = total_loss / size
     total_correct = total_correct / size
+    grad_norm = grad_norm / size
     if writer is not None:
         writer.add_scalar("Loss/train_epoch", total_loss, epoch)
         writer.add_scalar("Accuracy/train_epoch", total_correct, epoch)
+        # writer.add_scalar(
+        #     "ParamsNorm",
+        #     torch.norm(torch.cat([p.view(-1) for p in model.parameters()])),
+        #     epoch,
+        # )
         writer.add_scalar(
-            "ParamsNorm",
-            torch.norm(torch.cat([p.view(-1) for p in model.parameters()])),
+            "GradNorm",
+            grad_norm,
             epoch,
         )
     print(f"train accuracy: {(100*total_correct):>0.1f}%, train loss: {total_loss:>8f}")

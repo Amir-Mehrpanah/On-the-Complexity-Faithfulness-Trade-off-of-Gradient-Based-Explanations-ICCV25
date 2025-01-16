@@ -21,14 +21,16 @@ seed = [0]
 activation = [
     ActivationSwitch.RELU,
     ActivationSwitch.LEAKY_RELU,
+    ActivationSwitch.SIGMOID,
+    ActivationSwitch.TANH,
     # ActivationSwitch.SOFTPLUS_B_1,
     ActivationSwitch.SOFTPLUS_B1,
-    # ActivationSwitch.SOFTPLUS_B3,
+    ActivationSwitch.SOFTPLUS_B3,
     ActivationSwitch.SOFTPLUS_B5,
-    # ActivationSwitch.SOFTPLUS_B7,
+    ActivationSwitch.SOFTPLUS_B7,
     ActivationSwitch.SOFTPLUS_B10,
     ActivationSwitch.SOFTPLUS_B50,
-    ActivationSwitch.SOFTPLUS_B100,
+    # ActivationSwitch.SOFTPLUS_B100,
 ]
 loss = [
     LossSwitch.CE,
@@ -91,9 +93,9 @@ img_size = [
     # 28,
     # 46,
     # 32,
-    64,
+    # 64,
     # 112,
-    # 224,
+    224,
 ]
 l2_reg = [
     0,
@@ -165,8 +167,8 @@ eval_only_on_test = [True]
 stats = [
     {
         "mean_rank": None,
-        # "var_rank": None,
         "mean": None,
+        # "var_rank": None,
         # "var": None,
         "correct": None,
         "image": None,
@@ -218,7 +220,13 @@ submit_measurements(
 
 # %% visualize
 hook_samples = [[]]
-keys = ["var", "mean", "var_rank", "mean_rank", "image"]
+keys = [
+    "var",
+    "mean",
+    "var_rank",
+    "mean_rank",
+    "image",
+]
 visualize_hooks(DatasetSwitch.IMAGENETTE, hook_samples, keys)
 
 # %% extract the grad results
