@@ -30,9 +30,6 @@ def spectral_density(image):
     radial_sum = np.bincount(r.ravel(), ft_magnitude_shifted.ravel())
     radial_count = np.bincount(r.ravel())
     radial_profile = radial_sum / radial_count  # Average power in each radius
-
-    # Normalize the profile to the first element, aka zero frequency, aka DC component
-    radial_profile = radial_profile / radial_profile[0]
     return radial_profile
 
 

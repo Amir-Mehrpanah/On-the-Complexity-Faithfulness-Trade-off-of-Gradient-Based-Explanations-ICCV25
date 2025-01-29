@@ -647,7 +647,10 @@ def get_mnist_dataset(
 class GradsDataset(torch.utils.data.Dataset):
     def __init__(self, root_path):
         self.root_path = root_path
-        self.files = glob(os.path.join(root_path, "*/*.pt"))
+        self.files = glob(
+            os.path.join(root_path, "**/*.pt"),
+            recursive=True,
+        )
 
     def __getitem__(self, idx):
         file_path = self.files[idx]

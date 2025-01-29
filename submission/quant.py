@@ -25,7 +25,7 @@ def extract_the_grads_dataset_on_compute_node(COMPUTE_DATA_DIR, EXT, TARGET_DIR)
 
     # extract the sub directories
     os.system(
-        f'ls {TARGET_DIR} | xargs -I {{}} -P 16 sh -c "tar -xf {TARGET_DIR}/{{}}/*.tar -C {TARGET_DIR}/{{}}"'
+        f'find {TARGET_DIR}*/ -type f -name "*.tar" | xargs -I @ -P 16 sh -c \'tar -xf @ -C "$(dirname @)"\''
     )
 
 

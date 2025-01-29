@@ -19,18 +19,20 @@ from src.utils import (
 
 seed = [0]
 activation = [
+    # order matters! in this very ugly list :/
+    # because we do string matching sometimes
     ActivationSwitch.RELU,
     ActivationSwitch.LEAKY_RELU,
     ActivationSwitch.SIGMOID,
     ActivationSwitch.TANH,
     # ActivationSwitch.SOFTPLUS_B_1,
+    ActivationSwitch.SOFTPLUS_B100,
+    ActivationSwitch.SOFTPLUS_B10,
     ActivationSwitch.SOFTPLUS_B1,
     ActivationSwitch.SOFTPLUS_B3,
-    ActivationSwitch.SOFTPLUS_B5,
     ActivationSwitch.SOFTPLUS_B7,
-    ActivationSwitch.SOFTPLUS_B10,
     ActivationSwitch.SOFTPLUS_B50,
-    # ActivationSwitch.SOFTPLUS_B100,
+    ActivationSwitch.SOFTPLUS_B5,
 ]
 loss = [
     LossSwitch.CE,
@@ -219,11 +221,11 @@ submit_measurements(
 )
 
 # %% visualize
-hook_samples = [[]]
+hook_samples = [[51]]
 keys = [
-    "var",
+    # "var",
     "mean",
-    "var_rank",
+    # "var_rank",
     "mean_rank",
     "image",
 ]

@@ -1,6 +1,7 @@
 # %% imports read quants
 import numpy as np
 import pandas as pd
+from glob import glob
 import torch
 import matplotlib.pyplot as plt
 import os
@@ -8,16 +9,27 @@ import os
 os.chdir("/home/x_amime/x_amime/projects/kernel-view-to-explainability/")
 
 output_dir = ".tmp/visualizations/paper/"
+input_size = 224
 dataset = [
     # "IMAGENETTE_122_beta_1k",
-    "IMAGENETTE_224_depth_1k"
+    # "IMAGENETTE_224_depth_1k",
+    # f"IMAGENETTE_{input_size}_beta_1k_*",
+    # f"IMAGENETTE_{input_size}_nonorm_count_sum",
+    f"IMAGENETTE_{input_size}_nonorm_sum_count",
 ][0]
 quants_path = f".tmp/quants/{dataset}::quants.pt"
-quants = torch.load(quants_path)
+paths = glob(quants_path)
+print("found quants paths", paths)
+quants = []
+for path in paths:
+    quants.extend(torch.load(path))
+
 quants = pd.DataFrame(quants)
+
 quants["noise_scale"] = quants["noise_scale"].astype(float)
 quants["index"] = quants["index"].astype(int)
 temp = quants["address"].apply(lambda x: x[0].split("/")[-2].split("::"))
+# print("columns:", temp)
 temp = pd.DataFrame(
     temp.tolist(),
     columns=[
@@ -26,12 +38,14 @@ temp = pd.DataFrame(
         "activation",
         "seed",
         "l2reg",
-        "input_size",
+        # "input_size",
         "lr",
         "ns",
     ],
 )
 temp.drop(columns=["ns"], inplace=True)
+temp["input_size"] = input_size
+temp["lr"] = temp["lr"].astype(float)
 quants = pd.concat([quants, temp], axis=1)
 
 quants = quants.set_index(
@@ -47,9 +61,12 @@ quants = quants.set_index(
         "index",
     ]
 )
+quants = quants.sort_index()
 
 activation_nice_names = {
     "RELU": "ReLU",
+    "TANH": "Tanh",
+    "SIGMOID": "Sigmoid",
     "LEAKY_RELU": "Leaky ReLU",
     "SOFTPLUS_B_1": "Softplus 0.1",
     "SOFTPLUS_B1": "Softplus 1",
@@ -61,19 +78,22 @@ activation_nice_names = {
     "SOFTPLUS_B100": "Softplus 100",
 }
 activations = [
-    "RELU",
-    "LEAKY_RELU",
-    "SOFTPLUS_B10",
-    # "SOFTPLUS_B7",
-    "SOFTPLUS_B5",
-    "SOFTPLUS_B50",
-    "SOFTPLUS_B100",
-    # "SOFTPLUS_B3",
-    # "SOFTPLUS_B1",
+    # "LEAKY_RELU",
+    # "SIGMOID",
+    # "TANH",
     # "SOFTPLUS_B_1",
+    "SOFTPLUS_B1",
+    "SOFTPLUS_B3",
+    "SOFTPLUS_B5",
+    "SOFTPLUS_B7",
+    "SOFTPLUS_B10",
+    "SOFTPLUS_B50",
+    # "SOFTPLUS_B100",
+    "RELU",
 ]
 markers = ["o", "s", "D", "v", "^", "<", ">", "p", "P", "*", "X", "d", "H", "h"]
-colors = plt.cm.tab10(np.arange(len(activations)))
+# colors = plt.cm.tab20(np.arange(len(activations)))
+colors = plt.cm.get_cmap("turbo_r")(np.linspace(0.1, 0.9, len(activations)))
 activation_colors = {
     activation: color for activation, color in zip(activations, colors)
 }
@@ -164,9 +184,14 @@ def density_depth_inputsize(
                                 color=activation_colors[activation],
                                 # alpha=(rid + 1) / len(temp.columns.levels[4]),
                             )
-                            vline = len(
-                                    temp[input_size][layers][activation][noise_scale][lr].values[0]
-                                )*0.5
+                            vline = (
+                                len(
+                                    temp[input_size][layers][activation][noise_scale][
+                                        lr
+                                    ].values[0]
+                                )
+                                * 0.5
+                            )
                             print(
                                 "addr",
                                 input_size,
@@ -179,7 +204,7 @@ def density_depth_inputsize(
                                 vline,
                             )
                             ax.vlines(
-                                x=vline,  
+                                x=vline,
                                 ymin=0,
                                 ymax=1,
                                 color="r",
@@ -698,7 +723,7 @@ for spec_type in [
 # %%
 
 
-def plot_activations(quants, spec_type, for_lr=0.001):
+def plot_activations(quants, spec_type, for_lr=None):
     temp = quants.pivot_table(
         columns=["input_size", "layers", "activation", "noise_scale", "lr"],
         values=spec_type,
@@ -710,7 +735,7 @@ def plot_activations(quants, spec_type, for_lr=0.001):
         values=spec_type,
         aggfunc="mean",
     )
-    factor = 3
+    factor = 3.5
     n_rows = len(temp.columns.levels[1])
     n_cols = len(temp.columns.levels[0])
     fig, axes = plt.subplots(
@@ -718,7 +743,7 @@ def plot_activations(quants, spec_type, for_lr=0.001):
         ncols=n_cols,
         sharex=True,
         # sharey=True,
-        figsize=(n_cols * factor * 1.1, n_rows * factor),
+        figsize=(n_cols * factor, n_rows * factor),
         tight_layout=True,
     )
     spec = "mean rank" if spec_type == "mr_spectral_density" else "var rank"
@@ -739,8 +764,8 @@ def plot_activations(quants, spec_type, for_lr=0.001):
                 if lid == 0:
                     ax.set_title(f"density at size {input_size}")
                 if sid == 0:
-                    # ax.set_ylabel("spectral density")
-                    ax.set_ylabel(f"depth {layers}")
+                    ax.set_ylabel("spectral density")
+                    # ax.set_ylabel(f"depth {layers}")
                     # ax.text(
                     #     -0.3,
                     #     0.5,
@@ -748,33 +773,32 @@ def plot_activations(quants, spec_type, for_lr=0.001):
                     #     va="center",
                     #     ha="center",
                     #     rotation=90,
-
+                num_lrs = len(temp.columns.levels[4])
                 for color_indx, activation in enumerate(activations):
                     for rid, lr in enumerate(temp.columns.levels[4]):
-                        if lr != "0.001":
+                        if for_lr is not None and lr != for_lr:
                             continue
-                        # if activation == "SOFTPLUS_B5" and lr != "0.001":
-                        #     continue
-                        # if activation == "SOFTPLUS_B10" and lr != "0.001":
-                        #     continue
-                        # if activation == "SOFTPLUS_B50" and lr == "0.005":
-                        #     continue
-                        # if activation == "SOFTPLUS_B100" and lr == "0.005":
-                        #     continue
-                        # if activation == "RELU" and lr != "0.0001":
-                        #     continue
-                        # if activation == "LEAKY_RELU" and lr != "0.0001":
-                        #     continue
-
+                        alpha = color_indx / len(activations)
                         try:
+                            if spec_type == "mr_spectral_density":
+                                max_val = (
+                                    temp[input_size][layers][activation][noise_scale][
+                                        lr
+                                    ]
+                                    .values[0]
+                                    .max()
+                                )
+                            else:
+                                max_val = 1
                             ax.plot(
                                 temp[input_size][layers][activation][noise_scale][
                                     lr
-                                ].values[0],
+                                ].values[0]
+                                / max_val,
                                 color=activation_colors[activation],
-                                alpha=0.5,
-                                marker=markers[rid],
-                                markersize=0.3,
+                                # alpha=alpha,
+                                # marker=markers[rid],
+                                # markersize=0.3,
                             )
                             print(
                                 "addr",
@@ -783,6 +807,8 @@ def plot_activations(quants, spec_type, for_lr=0.001):
                                 activation,
                                 noise_scale,
                                 rid,
+                                "alpha",
+                                (rid + 1) / num_lrs,
                                 markers[rid],
                                 lr,
                             )
@@ -803,14 +829,45 @@ def plot_activations(quants, spec_type, for_lr=0.001):
                 if lid == n_rows - 1:
                     ax.set_xlabel("frequency")
 
-                ax.set_xscale("log")
+                # ax.set_xscale("log")
                 ax.set_yscale("log")
 
 
-plot_activations(
-    quants,
-    spec_type="mr_spectral_density",
-)
-plt.savefig(f"{output_dir}{dataset}_activations.pdf")
+# for spec_type in [
+#     "mr_spectral_density",
+#     # "vr_spectral_density",
+#     "m_spectral_density",
+#     # "v_spectral_density",
+# ]:
+#     plot_activations(quants, spec_type=spec_type)
+#     plt.savefig(f"{output_dir}{dataset}_{spec_type}_all.pdf")
+#     plt.close()
+
+# for lr in quants.index.levels[7]:
+#     for spec_type in [
+#         "mr_spectral_density",
+#         # "vr_spectral_density",
+#         "m_spectral_density",
+#         # "v_spectral_density",
+#     ]:
+#         plot_activations(quants, spec_type=spec_type, for_lr=lr)
+#         plt.savefig(f"{output_dir}{dataset}_{spec_type}_{lr}.pdf")
+#         plt.close()
+
+lr = 0.0001
+for spec_type in [
+    "mr_spectral_density",
+    # "vr_spectral_density",
+    "m_spectral_density",
+    # "v_spectral_density",
+]:
+    plot_activations(quants, spec_type=spec_type, for_lr=lr)
+    y_lim = plt.gca().get_ylim()
+    scale = 0.008 if spec_type == "mr_spectral_density" else 0.5
+    y_lim = (y_lim[0], y_lim[1] * scale)
+    print("ylim", y_lim)
+    plt.ylim(y_lim)
+    plt.savefig(f"{output_dir}{dataset}_{spec_type}_{lr}.pdf")
+    plt.close()
 
 # %%

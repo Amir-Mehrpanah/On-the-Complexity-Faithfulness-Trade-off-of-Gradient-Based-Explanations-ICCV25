@@ -208,7 +208,7 @@ def visualize_hooks(
 ):
     for j in hook_samples[0]:
         os.makedirs(f".tmp/visualizations/{j}", exist_ok=True)
-        glob_path = f".tmp/quants/hooks/{Dataset}*/{j}.pt"
+        glob_path = f".tmp/quants/hooks/*/{j}.pt"
         paths = glob(glob_path)
         print(glob_path, len(paths))
         for path in paths:
