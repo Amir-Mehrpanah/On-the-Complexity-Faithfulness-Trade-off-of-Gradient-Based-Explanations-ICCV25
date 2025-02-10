@@ -16,7 +16,7 @@ from src.datasets import (
     move_data_to_compute_node,
     resolve_data_directories,
 )
-from src.utils import EXPERIMENT_PREFIX_SEP, DatasetSwitch, determine_device
+from src.utils import DatasetSwitch, determine_device
 from src import quant_measures_grads
 
 
@@ -31,7 +31,6 @@ def extract_the_grads_dataset_on_compute_node(COMPUTE_DATA_DIR, EXT, TARGET_DIR)
 
 def main(args):
     print(args)
-    name = args["name"]
     args["dataset"] = DatasetSwitch.GRADS
 
     if args["port"] is not None and args["port"] > 0:
@@ -54,21 +53,18 @@ def main(args):
     ) = resolve_data_directories(args)
 
     os.system("module load Fpart/1.5.1-gcc-8.5.0")
-    DATA_DIR = os.path.join(DATA_DIR, name)
+    DATA_DIR = os.path.join(DATA_DIR, args["name"])
     move_data_to_compute_node(DATA_DIR, EXT == "tgz", COMPUTE_DATA_DIR)
 
     extract_the_grads_dataset_on_compute_node(COMPUTE_DATA_DIR, EXT, TARGET_DIR)
 
     print("Running main job...")
     print(f"Data is in {COMPUTE_DATA_DIR_BASE_DIR}")
-    results = quant_measures_grads.main(
+    os.makedirs(paths.LOCAL_QUANTS_DIR, exist_ok=True)
+    print("Output dir is", paths.LOCAL_QUANTS_DIR)
+
+    quant_measures_grads.main(
         root_path=TARGET_DIR,
         output_dir=paths.LOCAL_QUANTS_DIR,
         **args,
     )
-
-    os.makedirs(paths.LOCAL_QUANTS_DIR, exist_ok=True)
-    file_name = os.path.join(
-        paths.LOCAL_QUANTS_DIR, f"{name}{EXPERIMENT_PREFIX_SEP}quants.pt"
-    )
-    torch.save(results, file_name)

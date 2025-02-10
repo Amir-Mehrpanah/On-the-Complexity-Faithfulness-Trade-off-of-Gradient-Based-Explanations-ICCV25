@@ -1,6 +1,8 @@
 import os
 import numpy as np
+import torch
 from src.datasets import get_grad_dataloader
+from src.utils import EXPERIMENT_PREFIX_SEP
 import gc
 
 
@@ -36,7 +38,7 @@ def spectral_density(image):
 def measure_grads(data):
     results = {
         "mr_spectral_density": spectral_density(data["mean_rank"]),
-        "m_spectral_density": spectral_density(data["mean"]),
+        # "m_spectral_density": spectral_density(data["mean"]),
         # "cosine_similarity": cosine_similarity(data),
         # "vr_spectral_density": spectral_density(data["var_rank"]),
         # "v_spectral_density": spectral_density(data["var"]),
@@ -45,9 +47,9 @@ def measure_grads(data):
     results["mr_expected_spectral_density"] = (
         freq * results["mr_spectral_density"]
     ).mean()
-    results["m_expected_spectral_density"] = (
-        freq * results["m_spectral_density"]
-    ).mean()
+    # results["m_expected_spectral_density"] = (
+    #     freq * results["m_spectral_density"]
+    # ).mean()
     # results["vr_expected_spectral_density"] = (
     #     freq * results["vr_spectral_density"]
     # ).mean()
@@ -60,6 +62,7 @@ def measure_grads(data):
 def main(
     *,
     root_path,
+    name,
     num_workers,
     prefetch_factor,
     hook_samples,
@@ -71,6 +74,14 @@ def main(
     print(f"kwargs: {kwargs}")
     hooks_dir = os.path.join(output_dir, "hooks")
     os.makedirs(hooks_dir, exist_ok=True)
+    
+    # check if name is a path like path_files/file_prefix or only file_prefix
+    # create path_files if it does not exist
+    if os.path.dirname(name):
+        temp = os.path.join(output_dir, os.path.dirname(name))
+        os.makedirs(temp, exist_ok=True)
+        print(f"created directory under {output_dir} with name {os.path.dirname(name)}")
+
     dataloader = get_grad_dataloader(
         root_path,
         num_workers=num_workers,
@@ -90,7 +101,13 @@ def main(
             os.system(f"rsync -a {address} {hooks_dir}/{parent_dir}/")  # faster
             # torch.save(data, f"{hooks_dir}/{data['address']}") # slower
 
-        if i % q10_dataloader == 0:
+        if ((i > 0) and (i % q10_dataloader == 0)) or (i == len(dataloader) - 1):
             print(f"{i / len(dataloader):.2%} is processed")
             gc.collect()
-    return measurements
+
+            file_name = os.path.join(
+                output_dir, f"{name}{EXPERIMENT_PREFIX_SEP}_{i}_quants.pt"
+            )
+
+            torch.save(measurements, file_name)
+            measurements = []

@@ -17,22 +17,46 @@ from src.utils import (
     ModelSwitch,
 )
 
-seed = [0]
+seed = [
+    0,
+    # 1,
+    # 2,
+    # 3,
+    # 4,
+    # 5,
+    # 6,
+    # 7,
+    # 8,
+    # 9,
+]
 activation = [
-    # order matters! in this very ugly list :/
-    # because we do string matching sometimes
     ActivationSwitch.RELU,
-    ActivationSwitch.LEAKY_RELU,
-    ActivationSwitch.SIGMOID,
-    ActivationSwitch.TANH,
-    # ActivationSwitch.SOFTPLUS_B_1,
-    ActivationSwitch.SOFTPLUS_B100,
-    ActivationSwitch.SOFTPLUS_B10,
-    ActivationSwitch.SOFTPLUS_B1,
-    ActivationSwitch.SOFTPLUS_B3,
-    ActivationSwitch.SOFTPLUS_B7,
+    # ActivationSwitch.LEAKY_RELU,
+    # ActivationSwitch.SIGMOID,
+    # ActivationSwitch.TANH,
+    #
+    #
+    #### order matters! in this a very ugly list :/
+    #### because we do string matching sometimes
+    #
+    #
+    ActivationSwitch.SOFTPLUS_B_9,
+    ActivationSwitch.SOFTPLUS_B_8,
+    ActivationSwitch.SOFTPLUS_B_7,
+    ActivationSwitch.SOFTPLUS_B_6,
+    ActivationSwitch.SOFTPLUS_B_5,
+    ActivationSwitch.SOFTPLUS_B_4,
+    ActivationSwitch.SOFTPLUS_B_3,
+    ActivationSwitch.SOFTPLUS_B_2,
+    ActivationSwitch.SOFTPLUS_B_1,
+    # ActivationSwitch.SOFTPLUS_B100,
     ActivationSwitch.SOFTPLUS_B50,
+    ActivationSwitch.SOFTPLUS_B10,
+    ActivationSwitch.SOFTPLUS_B7,
     ActivationSwitch.SOFTPLUS_B5,
+    ActivationSwitch.SOFTPLUS_B3,
+    ActivationSwitch.SOFTPLUS_B2,
+    ActivationSwitch.SOFTPLUS_B1,
 ]
 loss = [
     LossSwitch.CE,
@@ -55,8 +79,8 @@ layers = [
     # [],
     # [1],
     # [2],
-    # [3],
-    # [4],
+    [3],
+    [4],
     [5],
     # [6],
     # [7],
@@ -70,8 +94,8 @@ layers = [
     # [1, 1, 1, 6],
 ]
 dataset = [
-    # DatasetSwitch.FASHION_MNIST,
-    # DatasetSwitch.CIFAR10,
+    DatasetSwitch.FASHION_MNIST,
+    DatasetSwitch.CIFAR10,
     DatasetSwitch.IMAGENETTE,
 ]
 bias = [False]
@@ -92,11 +116,11 @@ else:
 num_workers = [16]
 prefetch_factor = [8]
 img_size = [
-    # 28,
+    28,
     # 46,
-    # 32,
+    32,
     # 64,
-    # 112,
+    112,
     224,
 ]
 l2_reg = [
@@ -106,11 +130,16 @@ l2_reg = [
 ]
 lr = [
     5e-3,
+    3e-3,
     1e-3,
     5e-4,
+    4e-4,
+    3e-4,
+    2e-4,
     1e-4,
-    4e-5,
-    5e-5,
+    # 5e-5,
+    # 3e-5,
+    # 4e-5,
     # 1e-5,
 ]
 # %% submit training
@@ -123,6 +152,7 @@ epochs = [100]
 lr_decay_gamma = [0.98]
 warmup_epochs_ratio = 0.0
 gaussian_noise_var = [0.0]
+gaussian_blur_var = [0.0]
 
 submit_training(
     seed=seed,
@@ -147,6 +177,7 @@ submit_training(
     epochs=epochs,
     warmup_epochs_ratio=warmup_epochs_ratio,
     gaussian_noise_var=gaussian_noise_var,
+    gaussian_blur_var=gaussian_blur_var,
     img_size=img_size,
     lr_decay_gamma=lr_decay_gamma,
     min_test_acc=min_test_acc,
@@ -157,7 +188,7 @@ num_batches = [1]
 batch_size = [1]
 epoch = [0]
 num_distinct_images = [1000]
-gaussian_noise_var = [
+gaussian_noise_var = [  # the data loader parameters not for the post-hoc explanation method
     0.0,
     # 1e-5,
     # 1e-4,
@@ -165,11 +196,15 @@ gaussian_noise_var = [
     # 1e-2,
     # 1e-1,
 ]
+gaussian_blur_var = [  # the data loader parameters not for the post-hoc explanation method
+    0.0,
+    # 1.0,
+]
 eval_only_on_test = [True]
 stats = [
     {
         "mean_rank": None,
-        "mean": None,
+        # "mean": None,
         # "var_rank": None,
         # "var": None,
         "correct": None,
@@ -193,6 +228,7 @@ submit_grads(
     num_workers=num_workers,
     prefetch_factor=prefetch_factor,
     gaussian_noise_var=gaussian_noise_var,
+    gaussian_blur_var=gaussian_blur_var,
     num_batches=num_batches,
     add_inverse=add_inverse,
     seed=seed,
@@ -208,7 +244,12 @@ submit_grads(
 
 # %% run measurements on grads
 hook_samples = [[]]
-name = ["IMAGENETTE"]
+name = [
+    "IMAGENETTE/112",
+    "IMAGENETTE/224",
+    # "CIFAR10",
+    # "FASHION_MNIST",
+]
 num_workers = [8]
 submit_measurements(
     name=name,
@@ -224,7 +265,7 @@ submit_measurements(
 hook_samples = [[51]]
 keys = [
     # "var",
-    "mean",
+    # "mean",
     # "var_rank",
     "mean_rank",
     "image",
@@ -248,21 +289,3 @@ os.chdir(cwd)
 # !rm -r logs/12*
 # !rm -r .tmp/extracted/*
 # !rm -r .tmp/outputs/*
-
-# %% debug
-import torch
-from src.models.utils import get_model
-
-g = 224
-model = get_model(
-    input_shape=(3, g, g),
-    model_name=ModelSwitch.SIMPLE_CNN_DEPTH,
-    num_classes=10,
-    activation_fn=torch.nn.ReLU(),
-    bias=False,
-    pre_act=False,
-    layers=[7],
-)
-x = torch.randn(1, 3, g, g)
-paramsnorm = torch.norm(torch.cat([p.view(-1) for p in model.parameters()]))
-model(x)

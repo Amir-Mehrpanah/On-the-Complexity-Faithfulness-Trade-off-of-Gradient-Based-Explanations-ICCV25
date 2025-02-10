@@ -332,6 +332,7 @@ def main(
     num_distinct_images,
     num_batches,
     gaussian_noise_var,
+    gaussian_blur_var,
     stats,
     pre_act,
     layers,
@@ -359,6 +360,7 @@ def main(
         augmentation=AugmentationSwitch.EXP_GEN,
         add_inverse=add_inverse,
         gaussian_noise_var=gaussian_noise_var,
+        gaussian_blur_var=gaussian_blur_var,
     )
     clean_gen_loaders = get_training_and_test_dataloader(
         dataset,
@@ -372,6 +374,7 @@ def main(
         augmentation=AugmentationSwitch.EXP_GEN,
         add_inverse=add_inverse,
         gaussian_noise_var=0,
+        gaussian_blur_var=0,
     )
 
     if eval_only_on_test:

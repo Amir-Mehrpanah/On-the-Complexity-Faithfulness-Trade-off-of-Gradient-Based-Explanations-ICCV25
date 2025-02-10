@@ -49,12 +49,20 @@ class ActivationSwitch(ConvertableEnum):
     SOFTPLUS_B_01 = 11
     SOFTPLUS_B_1 = 12
     SOFTPLUS_B_2 = 13
+    SOFTPLUS_B_3 = 30
+    SOFTPLUS_B_4 = 31
+    SOFTPLUS_B_5 = 24
+    SOFTPLUS_B_6 = 26
+    SOFTPLUS_B_7 = 27
+    SOFTPLUS_B_8 = 28
+    SOFTPLUS_B_9 = 25
     SOFTPLUS_B100 = 17
     SOFTPLUS_B10 = 16
     SOFTPLUS_B7 = 18
     SOFTPLUS_B50 = 20
     SOFTPLUS_B5 = 15
     SOFTPLUS_B3 = 19
+    SOFTPLUS_B2 = 29
     SOFTPLUS_B1 = 14
     LEAKY_RELU = 21
     RELU = 10
@@ -89,6 +97,8 @@ def get_experiment_prefix(
     l2_reg,
     img_size,
     lr,
+    gaussian_noise_var,
+    gaussian_blur_var,
     **args,
 ):
     name_list = []
@@ -98,7 +108,8 @@ def get_experiment_prefix(
     name_list.append(activation)
     name_list.append(seed)
     name_list.append(l2_reg)
-    # name_list.append(img_size)
+    # name_list.append(gaussian_noise_var)
+    # name_list.append(gaussian_blur_var)
     name_list.append(lr)
     return os.path.join(
         str(dataset),

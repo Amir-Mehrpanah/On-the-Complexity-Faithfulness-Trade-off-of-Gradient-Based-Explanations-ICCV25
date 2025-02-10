@@ -271,6 +271,7 @@ def main(
     writer,
     pre_act,
     gaussian_noise_var,
+    gaussian_blur_var,
     layers,
     warmup_epochs,
     seed,
@@ -295,6 +296,7 @@ def main(
             num_workers=num_workers,
             prefetch_factor=prefetch_factor,
             gaussian_noise_var=gaussian_noise_var,
+            gaussian_blur_var=gaussian_blur_var,
         )
     )
 

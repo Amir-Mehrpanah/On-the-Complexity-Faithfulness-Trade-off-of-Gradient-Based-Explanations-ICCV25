@@ -244,7 +244,8 @@ MNIST_STD = (0.5,)
 
 
 # see b-cos v2 for this
-# We are adding to do sensitivity analysis
+# We are adding this to do an ablation study
+# turns out not important enough to be in our paper!
 class AddInverse(torch.nn.Module):
     """To a [B, C, H, W] input add the inverse channels of the given one to it.
     Results in a [B, 2C, H, W] output. Single image [C, H, W] is also accepted.
@@ -267,6 +268,7 @@ def get_imagenette_dataset(
     img_size,
     augmentation,
     gaussian_noise_var,
+    gaussian_blur_var,
     add_inverse=False,
     **kwargs,
 ):
@@ -277,6 +279,7 @@ def get_imagenette_dataset(
         img_size,
         add_inverse,
         gaussian_noise_var,
+        gaussian_blur_var,
         augmentation,
         label_transform,
     )
@@ -285,6 +288,7 @@ def get_imagenette_dataset(
         img_size,
         add_inverse,
         gaussian_noise_var,
+        gaussian_blur_var,
         augmentation,
         label_transform,
     )
@@ -297,6 +301,7 @@ def get_imagenette_train(
     img_size,
     add_inverse,
     gaussian_noise_var,
+    gaussian_blur_var,
     augmentation,
     label_transform=None,
 ):
@@ -304,18 +309,19 @@ def get_imagenette_train(
         augmentation, AugmentationSwitch
     ), f"Augmentation must be an enum of type AugmentationSwitch"
 
-    augmentations = get_aug_imagenette(
+    augmentations_ = get_aug_imagenette(
         img_size,
         augmentation,
         add_inverse,
         gaussian_noise_var,
+        gaussian_blur_var,
         "train",
     )
 
     training_data = datasets.Imagenette(
         root=root_path,
         split="train",
-        transform=augmentations,
+        transform=augmentations_,
         target_transform=label_transform,
         download=False,
     )
@@ -323,10 +329,17 @@ def get_imagenette_train(
     return training_data
 
 
-def get_aug_imagenette(img_size, augmentation, add_inverse, gaussian_noise_var, split):
+def get_aug_imagenette(
+    img_size,
+    augmentation,
+    add_inverse,
+    gaussian_noise_var,
+    gaussian_blur_var,
+    split,
+):
     if augmentation == AugmentationSwitch.TRAIN:
         if split == "train":
-            augmentations = (
+            augmentations = [
                 torchvision.transforms.ToTensor(),
                 torchvision.transforms.RandomResizedCrop(img_size),
                 torchvision.transforms.RandomChoice(
@@ -354,9 +367,13 @@ def get_aug_imagenette(img_size, augmentation, add_inverse, gaussian_noise_var, 
                     )
                 ),
                 GaussianISONoise(gaussian_noise_var),
-            )
+            ]
+            if gaussian_blur_var > 0:
+                augmentations.append(
+                    torchvision.transforms.GaussianBlur(5, gaussian_blur_var)
+                )
         elif split == "test":
-            augmentations = (
+            augmentations = [
                 torchvision.transforms.ToTensor(),
                 torchvision.transforms.Resize((img_size, img_size)),
                 (
@@ -367,12 +384,12 @@ def get_aug_imagenette(img_size, augmentation, add_inverse, gaussian_noise_var, 
                         IMAGENETTE_MEAN, IMAGENETTE_STD
                     )
                 ),
-            )
+            ]
         else:
             raise ValueError(f"Split {split} not recognized")
 
     elif augmentation == AugmentationSwitch.EXP_GEN:
-        augmentations = (
+        augmentations = [
             torchvision.transforms.ToTensor(),
             torchvision.transforms.Resize((img_size, img_size)),
             (
@@ -382,7 +399,11 @@ def get_aug_imagenette(img_size, augmentation, add_inverse, gaussian_noise_var, 
                 else torchvision.transforms.Normalize(IMAGENETTE_MEAN, IMAGENETTE_STD)
             ),
             GaussianISONoise(gaussian_noise_var),
-        )
+        ]
+        if gaussian_blur_var > 0:
+            augmentations.append(
+                torchvision.transforms.GaussianBlur(5, gaussian_blur_var)
+            )
     if augmentation == AugmentationSwitch.EXP_VIS:
         augmentations = (
             torchvision.transforms.ToTensor(),
@@ -397,6 +418,7 @@ def get_imagenette_test(
     img_size,
     add_inverse,
     gaussian_noise_var,
+    gaussian_blur_var,
     augmentation=AugmentationSwitch.TRAIN,
     label_transform=None,
 ):
@@ -404,18 +426,19 @@ def get_imagenette_test(
         augmentation, AugmentationSwitch
     ), f"Augmentation must be an enum of type AugmentationSwitch"
 
-    augmentations = get_aug_imagenette(
+    augmentations_ = get_aug_imagenette(
         img_size,
         augmentation,
         add_inverse,
         gaussian_noise_var,
+        gaussian_blur_var,
         "test",
     )
 
     test_data = datasets.Imagenette(
         root=root_path,
         split="val",
-        transform=augmentations,
+        transform=augmentations_,
         target_transform=label_transform,
         download=False,
     )
@@ -429,6 +452,7 @@ def get_fashion_mnist_dataset(
     img_size,
     add_inverse,
     gaussian_noise_var,
+    gaussian_blur_var,
     augmentation=AugmentationSwitch.TRAIN,
     label_transform=None,
 ):
@@ -437,6 +461,7 @@ def get_fashion_mnist_dataset(
         img_size,
         add_inverse,
         gaussian_noise_var,
+        gaussian_blur_var,
         augmentation,
     )
 
@@ -466,6 +491,7 @@ def get_aug_fmnist(
     img_size,
     add_inverse,
     gaussian_noise_var,
+    gaussian_blur_var,
     augmentation,
 ):
     if augmentation == AugmentationSwitch.EXP_VIS:
@@ -486,11 +512,23 @@ def get_aug_fmnist(
         if augmentation == AugmentationSwitch.TRAIN:
             if gaussian_noise_var > 0:
                 train_transform.append(GaussianISONoise(gaussian_noise_var))
+            if gaussian_blur_var > 0:
+                train_transform.append(
+                    torchvision.transforms.GaussianBlur(5, gaussian_blur_var)
+                )
             if add_inverse:
                 raise NotImplementedError("AddInverse not implemented for FashionMNIST")
         elif augmentation == AugmentationSwitch.EXP_GEN:
-            train_transform.append(GaussianISONoise(gaussian_noise_var))
-            test_transform.append(GaussianISONoise(gaussian_noise_var))
+            if gaussian_noise_var > 0:
+                train_transform.append(GaussianISONoise(gaussian_noise_var))
+                test_transform.append(GaussianISONoise(gaussian_noise_var))
+            if gaussian_blur_var > 0:
+                train_transform.append(
+                    torchvision.transforms.GaussianBlur(5, gaussian_blur_var)
+                )
+                test_transform.append(
+                    torchvision.transforms.GaussianBlur(5, gaussian_blur_var)
+                )
 
     test_transform = torchvision.transforms.Compose(test_transform)
     train_transform = torchvision.transforms.Compose(train_transform)
@@ -503,6 +541,7 @@ def get_cifar10_dataset(
     img_size,
     add_inverse,
     gaussian_noise_var,
+    gaussian_blur_var,
     augmentation=AugmentationSwitch.TRAIN,
     label_transform=None,
 ):
@@ -513,6 +552,7 @@ def get_cifar10_dataset(
         img_size,
         add_inverse,
         gaussian_noise_var,
+        gaussian_blur_var,
         augmentation,
     )
     training_data = datasets.CIFAR10(
@@ -537,6 +577,7 @@ def get_aug_cifar10(
     img_size,
     add_inverse,
     gaussian_noise_var,
+    gaussian_blur_var,
     augmentation,
 ):
     if augmentation == AugmentationSwitch.EXP_VIS:
@@ -564,11 +605,21 @@ def get_aug_cifar10(
             )
             if gaussian_noise_var > 0:
                 train_transform.append(GaussianISONoise(gaussian_noise_var))
+            if gaussian_blur_var > 0:
+                train_transform.append(
+                    torchvision.transforms.GaussianBlur(5, gaussian_blur_var)
+                )
         elif augmentation == AugmentationSwitch.EXP_GEN:
             if gaussian_noise_var > 0:
                 train_transform.append(GaussianISONoise(gaussian_noise_var))
                 test_transform.append(GaussianISONoise(gaussian_noise_var))
-
+            if gaussian_blur_var > 0:
+                train_transform.append(
+                    torchvision.transforms.GaussianBlur(5, gaussian_blur_var)
+                )
+                test_transform.append(
+                    torchvision.transforms.GaussianBlur(5, gaussian_blur_var)
+                )
     train_transform = torchvision.transforms.Compose(train_transform)
     test_transform = torchvision.transforms.Compose(test_transform)
     return train_transform, test_transform
@@ -578,6 +629,7 @@ def get_aug_mnist(
     img_size,
     add_inverse,
     gaussian_noise_var,
+    gaussian_blur_var,
     augmentation,
 ):
     if augmentation == AugmentationSwitch.EXP_VIS:
@@ -604,6 +656,15 @@ def get_aug_mnist(
             if augmentation == AugmentationSwitch.EXP_GEN:
                 test_transform.append(GaussianISONoise(gaussian_noise_var))
 
+        if gaussian_blur_var > 0:
+            train_transform.append(
+                torchvision.transforms.GaussianBlur(5, gaussian_blur_var)
+            )
+            if augmentation == AugmentationSwitch.EXP_GEN:
+                test_transform.append(
+                    torchvision.transforms.GaussianBlur(5, gaussian_blur_var)
+                )
+
     train_transform = torchvision.transforms.Compose(train_transform)
     test_transform = torchvision.transforms.Compose(test_transform)
     return train_transform, test_transform
@@ -611,13 +672,20 @@ def get_aug_mnist(
 
 @register_dataset(DatasetSwitch.MNIST)
 def get_mnist_dataset(
-    root_path, img_size, add_inverse, gaussian_noise_var, augmentation, **kwargs
+    root_path,
+    img_size,
+    add_inverse,
+    gaussian_noise_var,
+    gaussian_blur_var,
+    augmentation,
+    **kwargs,
 ):
     img_size = 28 if img_size is None else img_size
     train_transform, test_transform = get_aug_mnist(
         img_size,
         add_inverse,
         gaussian_noise_var,
+        gaussian_blur_var,
         augmentation,
     )
 

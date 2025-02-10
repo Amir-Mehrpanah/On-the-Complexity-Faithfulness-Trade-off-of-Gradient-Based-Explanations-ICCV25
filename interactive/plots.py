@@ -9,15 +9,13 @@ import os
 os.chdir("/home/x_amime/x_amime/projects/kernel-view-to-explainability/")
 
 output_dir = ".tmp/visualizations/paper/"
-input_size = 224
+input_size = 28
 dataset = [
-    # "IMAGENETTE_122_beta_1k",
-    # "IMAGENETTE_224_depth_1k",
-    # f"IMAGENETTE_{input_size}_beta_1k_*",
-    # f"IMAGENETTE_{input_size}_nonorm_count_sum",
-    f"IMAGENETTE_{input_size}_nonorm_sum_count",
+    # f"IMAGENETTE/{input_size}::_*",
+    # f"CIFAR10::_*",
+    f"FASHION_MNIST::_*",
 ][0]
-quants_path = f".tmp/quants/{dataset}::quants.pt"
+quants_path = f".tmp/quants/{dataset}quants.pt"
 paths = glob(quants_path)
 print("found quants paths", paths)
 quants = []
@@ -62,32 +60,58 @@ quants = quants.set_index(
     ]
 )
 quants = quants.sort_index()
-
+activation_betas = {
+    "RELU": np.inf,
+    "LEAKY_RELU": np.inf,
+    "SOFTPLUS_B_1": 0.1,
+    "SOFTPLUS_B_2": 0.2,
+    "SOFTPLUS_B_3": 0.3,
+    "SOFTPLUS_B_4": 0.4,
+    "SOFTPLUS_B_5": 0.5,
+    "SOFTPLUS_B_6": 0.6,
+    "SOFTPLUS_B_7": 0.7,
+    "SOFTPLUS_B_8": 0.8,
+    "SOFTPLUS_B_9": 0.9,
+    "SOFTPLUS_B1": 1,
+    "SOFTPLUS_B2": 2,
+    "SOFTPLUS_B3": 3,
+    "SOFTPLUS_B4": 4,
+    "SOFTPLUS_B5": 5,
+    "SOFTPLUS_B7": 7,
+    "SOFTPLUS_B10": 10,
+    "SOFTPLUS_B50": 50,
+    "SOFTPLUS_B100": 100,
+}
 activation_nice_names = {
     "RELU": "ReLU",
     "TANH": "Tanh",
     "SIGMOID": "Sigmoid",
     "LEAKY_RELU": "Leaky ReLU",
-    "SOFTPLUS_B_1": "Softplus 0.1",
-    "SOFTPLUS_B1": "Softplus 1",
-    "SOFTPLUS_B3": "Softplus 3",
-    "SOFTPLUS_B5": "Softplus 5",
-    "SOFTPLUS_B7": "Softplus 7",
-    "SOFTPLUS_B10": "Softplus 10",
-    "SOFTPLUS_B50": "Softplus 50",
-    "SOFTPLUS_B100": "Softplus 100",
 }
+for activation, beta in activation_betas.items():
+    activation_nice_names[activation] = f"SP(β={beta})"
+
 activations = [
     # "LEAKY_RELU",
     # "SIGMOID",
     # "TANH",
-    # "SOFTPLUS_B_1",
+    "SOFTPLUS_B_1",
+    "SOFTPLUS_B_2",
+    "SOFTPLUS_B_3",
+    # "SOFTPLUS_B_4",
+    "SOFTPLUS_B_5",
+    "SOFTPLUS_B_6",
+    "SOFTPLUS_B_7",
+    "SOFTPLUS_B_8",
+    "SOFTPLUS_B_9",
     "SOFTPLUS_B1",
+    "SOFTPLUS_B2",
     "SOFTPLUS_B3",
+    # "SOFTPLUS_B4",
     "SOFTPLUS_B5",
     "SOFTPLUS_B7",
     "SOFTPLUS_B10",
-    "SOFTPLUS_B50",
+    # "SOFTPLUS_B50",
     # "SOFTPLUS_B100",
     "RELU",
 ]
@@ -117,7 +141,8 @@ model_nice_names = {
     "RESNET_BOTTLENECK": "ResNet Bottleneck",
 }
 
-quants
+# quants
+quants.value_counts("activation")
 
 
 # %% defs
@@ -735,7 +760,7 @@ def plot_activations(quants, spec_type, for_lr=None):
         values=spec_type,
         aggfunc="mean",
     )
-    factor = 3.5
+    factor = 4
     n_rows = len(temp.columns.levels[1])
     n_cols = len(temp.columns.levels[0])
     fig, axes = plt.subplots(
@@ -743,7 +768,7 @@ def plot_activations(quants, spec_type, for_lr=None):
         ncols=n_cols,
         sharex=True,
         # sharey=True,
-        figsize=(n_cols * factor, n_rows * factor),
+        figsize=(n_cols * factor * 1.1, n_rows * factor),
         tight_layout=True,
     )
     spec = "mean rank" if spec_type == "mr_spectral_density" else "var rank"
@@ -762,7 +787,8 @@ def plot_activations(quants, spec_type, for_lr=None):
                     ax = axes[lid, sid]
 
                 if lid == 0:
-                    ax.set_title(f"density at size {input_size}")
+                    pass
+                    # ax.set_title(f"density at size {input_size}")
                 if sid == 0:
                     ax.set_ylabel("spectral density")
                     # ax.set_ylabel(f"depth {layers}")
@@ -824,7 +850,7 @@ def plot_activations(quants, spec_type, for_lr=None):
                             label=activation_nice_names[activation],
                             color=activation_colors[activation],
                         )
-                        ax.legend()
+                        ax.legend(loc="upper right")
 
                 if lid == n_rows - 1:
                     ax.set_xlabel("frequency")
@@ -836,7 +862,7 @@ def plot_activations(quants, spec_type, for_lr=None):
 # for spec_type in [
 #     "mr_spectral_density",
 #     # "vr_spectral_density",
-#     "m_spectral_density",
+#     # "m_spectral_density",
 #     # "v_spectral_density",
 # ]:
 #     plot_activations(quants, spec_type=spec_type)
@@ -847,27 +873,85 @@ def plot_activations(quants, spec_type, for_lr=None):
 #     for spec_type in [
 #         "mr_spectral_density",
 #         # "vr_spectral_density",
-#         "m_spectral_density",
+#         # "m_spectral_density",
 #         # "v_spectral_density",
 #     ]:
 #         plot_activations(quants, spec_type=spec_type, for_lr=lr)
 #         plt.savefig(f"{output_dir}{dataset}_{spec_type}_{lr}.pdf")
 #         plt.close()
 
-lr = 0.0001
+# lr = 0.0001 # IMAEGNETTE_224
+# lr = 0.0005 # IMAEGNETTE_112
+# lr = 0.003 # CIFAR10
+lr = 0.0001  # FASHION_MNIST
+r = 0.01
 for spec_type in [
     "mr_spectral_density",
     # "vr_spectral_density",
-    "m_spectral_density",
+    # "m_spectral_density",
     # "v_spectral_density",
 ]:
     plot_activations(quants, spec_type=spec_type, for_lr=lr)
     y_lim = plt.gca().get_ylim()
-    scale = 0.008 if spec_type == "mr_spectral_density" else 0.5
+    scale = r if spec_type == "mr_spectral_density" else 0.5
     y_lim = (y_lim[0], y_lim[1] * scale)
     print("ylim", y_lim)
     plt.ylim(y_lim)
-    plt.savefig(f"{output_dir}{dataset}_{spec_type}_{lr}.pdf")
+    plt.savefig(f"{output_dir}{dataset}_{spec_type}_{lr}.pdf", bbox_inches="tight")
     plt.close()
 
+
+# %%
+import matplotlib.ticker as mticker
+
+def plot_ef(quants, spec_type, for_lr=None):
+    temp = quants.pivot_table(
+        columns=["input_size", "seed", "layers", "noise_scale", "lr"],
+        index="activation",
+        values=spec_type,
+        aggfunc="count",
+    )
+    print(temp)
+    temp = quants.pivot_table(
+        columns=["input_size", "seed", "layers", "noise_scale", "lr"],
+        values=spec_type,
+        index="activation",
+        aggfunc="mean",
+    )
+    temp = temp.map(lambda x: np.mean(x*np.arange(len(x))),na_action="ignore")
+    mean = temp.apply(lambda x: np.mean(x), axis=1)
+    std = temp.apply(lambda x: np.std(x), axis=1)
+    return mean, std, temp
+
+
+lr = 0.0001  # FASHION_MNIST
+spec_type = "mr_spectral_density"
+temp_mean, temp_std, temp = plot_ef(quants, spec_type=spec_type, for_lr=lr)
+
+# sort rows of temp according to activation functions
+temp_mean = temp_mean.loc[activations]
+temp_std = temp_std.loc[activations]
+
+temp_mean = temp_mean.squeeze()
+temp_std = temp_std.squeeze()
+
+# replace index with nice names
+x_ticks = [activation_betas[x] for x in temp_mean.index]
+
+plt.figure(figsize=(3, 2))
+plt.plot(temp_mean)
+plt.fill_between(temp_mean.index, temp_mean - temp_std, temp_mean + temp_std, alpha=0.2)
+plt.ylabel("Expected Frequency")
+plt.xlabel(r"$\beta$")
+visible_x_ticks = 7
+plt.xticks(
+    range(len(x_ticks))[:: len(x_ticks) // visible_x_ticks],
+    x_ticks[:: len(x_ticks) // visible_x_ticks],
+)
+
+# y ticks show like 22K 23K 24K
+plt.gca().yaxis.set_major_formatter(mticker.ScalarFormatter(useMathText=True))
+plt.gca().ticklabel_format(style='sci', axis='y', scilimits=(2,4))
+
+plt.savefig(f"{output_dir}{dataset}_{spec_type}_{lr}_ef.pdf", bbox_inches="tight")
 # %%
