@@ -179,3 +179,4 @@ src/__pycache__/*
 runs/*
 logs_old/*
 visualizations/*
+backups/*

@@ -9,11 +9,12 @@ import os
 os.chdir("/home/x_amime/x_amime/projects/kernel-view-to-explainability/")
 
 output_dir = ".tmp/visualizations/paper/"
-input_size = 28
+input_size = 224
 dataset = [
+    f"*/IMAGENETTE::_*",
     # f"IMAGENETTE/{input_size}::_*",
     # f"CIFAR10::_*",
-    f"FASHION_MNIST::_*",
+    # f"FASHION_MNIST::_*",
 ][0]
 quants_path = f".tmp/quants/{dataset}quants.pt"
 paths = glob(quants_path)
@@ -60,6 +61,8 @@ quants = quants.set_index(
     ]
 )
 quants = quants.sort_index()
+quants.value_counts("activation")
+# %% constants
 activation_betas = {
     "RELU": np.inf,
     "LEAKY_RELU": np.inf,
@@ -95,22 +98,22 @@ activations = [
     # "LEAKY_RELU",
     # "SIGMOID",
     # "TANH",
-    "SOFTPLUS_B_1",
-    "SOFTPLUS_B_2",
-    "SOFTPLUS_B_3",
+    # "SOFTPLUS_B_1",
+    # "SOFTPLUS_B_2",
+    # "SOFTPLUS_B_3",
     # "SOFTPLUS_B_4",
-    "SOFTPLUS_B_5",
-    "SOFTPLUS_B_6",
-    "SOFTPLUS_B_7",
-    "SOFTPLUS_B_8",
+    # "SOFTPLUS_B_5",
+    # "SOFTPLUS_B_6",
+    # "SOFTPLUS_B_7",
+    # "SOFTPLUS_B_8",
     "SOFTPLUS_B_9",
     "SOFTPLUS_B1",
     "SOFTPLUS_B2",
     "SOFTPLUS_B3",
     # "SOFTPLUS_B4",
     "SOFTPLUS_B5",
-    "SOFTPLUS_B7",
-    "SOFTPLUS_B10",
+    # "SOFTPLUS_B7",
+    # "SOFTPLUS_B10",
     # "SOFTPLUS_B50",
     # "SOFTPLUS_B100",
     "RELU",
@@ -140,10 +143,6 @@ model_nice_names = {
     "RESNET_BASIC": "ResNet Basic",
     "RESNET_BOTTLENECK": "ResNet Bottleneck",
 }
-
-# quants
-quants.value_counts("activation")
-
 
 # %% defs
 def density_depth_inputsize(
@@ -745,7 +744,7 @@ for spec_type in [
     expected_freq_model(quants, spec_type=spec_type)
 
 
-# %%
+# %% plot tails input size
 
 
 def plot_activations(quants, spec_type, for_lr=None):
@@ -901,8 +900,9 @@ for spec_type in [
     plt.close()
 
 
-# %%
+# %% plot expected_freq
 import matplotlib.ticker as mticker
+
 
 def plot_ef(quants, spec_type, for_lr=None):
     temp = quants.pivot_table(
@@ -918,7 +918,7 @@ def plot_ef(quants, spec_type, for_lr=None):
         index="activation",
         aggfunc="mean",
     )
-    temp = temp.map(lambda x: np.mean(x*np.arange(len(x))),na_action="ignore")
+    temp = temp.map(lambda x: np.mean(x * np.arange(len(x))), na_action="ignore")
     mean = temp.apply(lambda x: np.mean(x), axis=1)
     std = temp.apply(lambda x: np.std(x), axis=1)
     return mean, std, temp
@@ -951,7 +951,65 @@ plt.xticks(
 
 # y ticks show like 22K 23K 24K
 plt.gca().yaxis.set_major_formatter(mticker.ScalarFormatter(useMathText=True))
-plt.gca().ticklabel_format(style='sci', axis='y', scilimits=(2,4))
+plt.gca().ticklabel_format(style="sci", axis="y", scilimits=(2, 4))
 
 plt.savefig(f"{output_dir}{dataset}_{spec_type}_{lr}_ef.pdf", bbox_inches="tight")
-# %%
+# %% plot depths and activations
+
+def plot_depth(quants, spec_type):
+    temp = quants.pivot_table(
+        columns=["lr", "layers", "activation"],
+        values=spec_type,
+        aggfunc="count",
+    )
+    print(temp)
+    temp = quants.pivot_table(
+        columns=["lr", "layers", "activation"],
+        values=spec_type,
+        aggfunc="mean",
+    )
+    return temp
+
+
+spec_type = "mr_spectral_density"
+temp = plot_depth(quants, spec_type=spec_type)
+
+# sort rows of temp according to activation functions
+lrs = temp.columns.levels[0]
+lrs = lrs[1:-3]
+dpths = temp.columns.levels[1]
+dpths = dpths[1:]
+n_rows = len(dpths)
+n_cols = len(lrs)
+factor = 3
+
+fig, axes = plt.subplots(nrows=n_rows, ncols=n_cols, figsize=(factor*n_cols, factor*n_rows),sharex=True)
+
+for i, lr in enumerate(lrs):
+    for j, dpt in enumerate(dpths):
+        ax = axes[j, i]
+        for activation in activations:
+            try:
+                ax.plot(
+                    temp[lr][dpt][activation].values[0],
+                    label=activation_nice_names[activation],
+                    color=activation_colors[activation],
+                )
+            except KeyError:
+                print(f"missing {activation} {dpt} {lr}")
+        ax.set_yscale("log")
+        if i == 0:
+            ax.set_ylabel("Power Spectral Density")
+        if j == len(dpths) - 1:
+            ax.set_xlabel("Frequency")
+
+        if j == 0 and i == len(lrs) - 1:
+            ax.legend()
+        ax.set_title(f"lr={lr}, depth={dpt}")
+
+        ylim = ax.get_ylim()
+        rate = 0.001
+        ax.set_ylim(ylim[0], ylim[1] * rate)
+
+dataset_path = os.path.basename(dataset)
+plt.savefig(f"{output_dir}{dataset_path}_{spec_type}_depth.pdf", bbox_inches="tight")

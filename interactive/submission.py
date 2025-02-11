@@ -40,22 +40,22 @@ activation = [
     #### because we do string matching sometimes
     #
     #
-    ActivationSwitch.SOFTPLUS_B_9,
-    ActivationSwitch.SOFTPLUS_B_8,
-    ActivationSwitch.SOFTPLUS_B_7,
-    ActivationSwitch.SOFTPLUS_B_6,
-    ActivationSwitch.SOFTPLUS_B_5,
-    ActivationSwitch.SOFTPLUS_B_4,
-    ActivationSwitch.SOFTPLUS_B_3,
-    ActivationSwitch.SOFTPLUS_B_2,
-    ActivationSwitch.SOFTPLUS_B_1,
+    # ActivationSwitch.SOFTPLUS_B_9,
+    # ActivationSwitch.SOFTPLUS_B_8,
+    # ActivationSwitch.SOFTPLUS_B_7,
+    # ActivationSwitch.SOFTPLUS_B_6,
+    # ActivationSwitch.SOFTPLUS_B_5,
+    # ActivationSwitch.SOFTPLUS_B_4,
+    # ActivationSwitch.SOFTPLUS_B_3,
+    # ActivationSwitch.SOFTPLUS_B_2,
+    # ActivationSwitch.SOFTPLUS_B_1,
     # ActivationSwitch.SOFTPLUS_B100,
-    ActivationSwitch.SOFTPLUS_B50,
-    ActivationSwitch.SOFTPLUS_B10,
-    ActivationSwitch.SOFTPLUS_B7,
-    ActivationSwitch.SOFTPLUS_B5,
-    ActivationSwitch.SOFTPLUS_B3,
-    ActivationSwitch.SOFTPLUS_B2,
+    # ActivationSwitch.SOFTPLUS_B50,
+    # ActivationSwitch.SOFTPLUS_B10,
+    # ActivationSwitch.SOFTPLUS_B7,
+    # ActivationSwitch.SOFTPLUS_B5,
+    # ActivationSwitch.SOFTPLUS_B3,
+    # ActivationSwitch.SOFTPLUS_B2,
     ActivationSwitch.SOFTPLUS_B1,
 ]
 loss = [
@@ -67,21 +67,21 @@ add_inverse = [
     False,
 ]
 model_name = [
-    ModelSwitch.SIMPLE_CNN_DEPTH
-    # ModelSwitch.SIMPLE_CNN,
-    # ModelSwitch.SIMPLE_CNN_BN,
-    # ModelSwitch.SIMPLE_CNN_SK,
-    # ModelSwitch.SIMPLE_CNN_SK_BN,
+    # ModelSwitch.SIMPLE_CNN_DEPTH
+    ModelSwitch.SIMPLE_CNN,
+    ModelSwitch.SIMPLE_CNN_BN,
+    ModelSwitch.SIMPLE_CNN_SK,
+    ModelSwitch.SIMPLE_CNN_SK_BN,
     # ModelSwitch.RESNET_BASIC,
     # ModelSwitch.RESNET_BOTTLENECK,
 ]
 layers = [
-    # [],
+    [],
     # [1],
     # [2],
-    [3],
-    [4],
-    [5],
+    # [3],
+    # [4],
+    # [5],
     # [6],
     # [7],
     # [1, 1, 1, 1],
@@ -94,8 +94,8 @@ layers = [
     # [1, 1, 1, 6],
 ]
 dataset = [
-    DatasetSwitch.FASHION_MNIST,
-    DatasetSwitch.CIFAR10,
+    # DatasetSwitch.FASHION_MNIST,
+    # DatasetSwitch.CIFAR10,
     DatasetSwitch.IMAGENETTE,
 ]
 bias = [False]
@@ -116,11 +116,11 @@ else:
 num_workers = [16]
 prefetch_factor = [8]
 img_size = [
-    28,
+    # 28,
     # 46,
-    32,
+    # 32,
     # 64,
-    112,
+    # 112,
     224,
 ]
 l2_reg = [
@@ -137,10 +137,10 @@ lr = [
     3e-4,
     2e-4,
     1e-4,
-    # 5e-5,
-    # 3e-5,
-    # 4e-5,
-    # 1e-5,
+    5e-5,
+    3e-5,
+    4e-5,
+    1e-5,
 ]
 # %% submit training
 batch_size = [256]
@@ -245,8 +245,9 @@ submit_grads(
 # %% run measurements on grads
 hook_samples = [[]]
 name = [
-    "IMAGENETTE/112",
-    "IMAGENETTE/224",
+    "IMAGENETTE",
+    # "IMAGENETTE/112",
+    # "IMAGENETTE/224",
     # "CIFAR10",
     # "FASHION_MNIST",
 ]
