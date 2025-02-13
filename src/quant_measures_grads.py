@@ -44,8 +44,9 @@ def measure_grads(data):
         # "v_spectral_density": spectral_density(data["var"]),
     }
     freq = np.arange(1, len(results["mr_spectral_density"]) + 1)
+    norm_sd = results["mr_spectral_density"] / results["mr_spectral_density"].sum()
     results["mr_expected_spectral_density"] = (
-        freq * results["mr_spectral_density"]
+        freq * norm_sd
     ).mean()
     # results["m_expected_spectral_density"] = (
     #     freq * results["m_spectral_density"]
@@ -88,6 +89,7 @@ def main(
         prefetch_factor=prefetch_factor,
     )
     measurements = []
+    print(f"len(dataloader): {len(dataloader)}")
     q10_dataloader = len(dataloader) // 10
     for i, data in enumerate(dataloader):
         quant = measure_grads(data)

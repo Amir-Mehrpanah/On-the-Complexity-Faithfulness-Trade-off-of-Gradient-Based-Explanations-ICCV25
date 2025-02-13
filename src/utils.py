@@ -128,14 +128,26 @@ def get_save_path(
     return f"checkpoints/{experiment_prefix}.pt"
 
 
-def save_pth(model, path):
+def save_pth(
+    model,
+    train_acc,
+    test_acc,
+    path,
+):
     """Saves the model to a .pth file.
 
     Args:
       model: The model to save.
       path: The path to save the model to.
     """
-    torch.save(model.state_dict(), path)
+    torch.save(
+        {
+            "model": model.state_dict(),
+            "train_acc": train_acc,
+            "test_acc": test_acc,
+        },
+        path,
+    )
 
 
 def convert_str_to_activation_fn(activation):

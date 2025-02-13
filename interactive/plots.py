@@ -1,17 +1,25 @@
 # %% imports read quants
+import itertools
 import numpy as np
 import pandas as pd
 from glob import glob
+import matplotlib.ticker as mticker
+from scipy import stats
 import torch
 import matplotlib.pyplot as plt
 import os
+from src import paths as local_pathlib
+
+from src.datasets import get_imagenette_dataset
+from src.utils import AugmentationSwitch, DatasetSwitch
 
 os.chdir("/home/x_amime/x_amime/projects/kernel-view-to-explainability/")
 
 output_dir = ".tmp/visualizations/paper/"
 input_size = 224
 dataset = [
-    f"*/IMAGENETTE::_*",
+    # f"*/IMAGENETTE::_*",
+    f"IMAGENETTE/*::_*",
     # f"IMAGENETTE/{input_size}::_*",
     # f"CIFAR10::_*",
     # f"FASHION_MNIST::_*",
@@ -92,7 +100,10 @@ activation_nice_names = {
     "LEAKY_RELU": "Leaky ReLU",
 }
 for activation, beta in activation_betas.items():
-    activation_nice_names[activation] = f"SP(β={beta})"
+    if beta == np.inf:
+        activation_nice_names[activation] = "ReLU"
+    else:
+        activation_nice_names[activation] = f"SP(β={beta})"
 
 activations = [
     # "LEAKY_RELU",
@@ -127,22 +138,23 @@ activation_colors = {
 
 models = [
     "SIMPLE_CNN",
-    "SIMPLE_CNN_BN",
     "SIMPLE_CNN_SK",
+    "SIMPLE_CNN_BN",
     "SIMPLE_CNN_SK_BN",
-    "RESNET_BASIC",
-    "RESNET_BOTTLENECK",
+    # "RESNET_BASIC",
+    # "RESNET_BOTTLENECK",
 ]
 colors = plt.cm.tab10(np.arange(len(models)))
 model_colors = {model: color for model, color in zip(models, colors)}
 model_nice_names = {
-    "SIMPLE_CNN": "CNN",
-    "SIMPLE_CNN_BN": "CNN BN",
-    "SIMPLE_CNN_SK": "CNN SK",
-    "SIMPLE_CNN_SK_BN": "CNN SK+BN",
+    "SIMPLE_CNN": "None",
+    "SIMPLE_CNN_BN": "BN",
+    "SIMPLE_CNN_SK": "SK",
+    "SIMPLE_CNN_SK_BN": "SK+BN",
     "RESNET_BASIC": "ResNet Basic",
     "RESNET_BOTTLENECK": "ResNet Bottleneck",
 }
+
 
 # %% defs
 def density_depth_inputsize(
@@ -617,7 +629,7 @@ for ns in quants.index.levels[5]:
         plt.close()
 
 
-# %%
+# %% density_inputsize_model
 def density_inputsize_model(quants, spec_type="mr_spectral_density"):
     temp = quants.pivot_table(
         columns=["input_size", "noise_scale", "model_name"],
@@ -759,7 +771,7 @@ def plot_activations(quants, spec_type, for_lr=None):
         values=spec_type,
         aggfunc="mean",
     )
-    factor = 4
+    factor = 3.5
     n_rows = len(temp.columns.levels[1])
     n_cols = len(temp.columns.levels[0])
     fig, axes = plt.subplots(
@@ -806,13 +818,14 @@ def plot_activations(quants, spec_type, for_lr=None):
                         alpha = color_indx / len(activations)
                         try:
                             if spec_type == "mr_spectral_density":
-                                max_val = (
-                                    temp[input_size][layers][activation][noise_scale][
-                                        lr
-                                    ]
-                                    .values[0]
-                                    .max()
-                                )
+                                # max_val = (
+                                #     temp[input_size][layers][activation][noise_scale][
+                                #         lr
+                                #     ]
+                                #     .values[0]
+                                #     .max()
+                                # )
+                                max_val = 1
                             else:
                                 max_val = 1
                             ax.plot(
@@ -880,10 +893,13 @@ def plot_activations(quants, spec_type, for_lr=None):
 #         plt.close()
 
 # lr = 0.0001 # IMAEGNETTE_224
+# r = 0.0005
 # lr = 0.0005 # IMAEGNETTE_112
-# lr = 0.003 # CIFAR10
-lr = 0.0001  # FASHION_MNIST
-r = 0.01
+# r = 0.005
+lr = 0.003  # CIFAR10
+r = 0.003
+# lr = 0.0001  # FASHION_MNIST
+# r = 0.05
 for spec_type in [
     "mr_spectral_density",
     # "vr_spectral_density",
@@ -901,10 +917,7 @@ for spec_type in [
 
 
 # %% plot expected_freq
-import matplotlib.ticker as mticker
-
-
-def plot_ef(quants, spec_type, for_lr=None):
+def plot_ef(quants, spec_type):
     temp = quants.pivot_table(
         columns=["input_size", "seed", "layers", "noise_scale", "lr"],
         index="activation",
@@ -918,43 +931,78 @@ def plot_ef(quants, spec_type, for_lr=None):
         index="activation",
         aggfunc="mean",
     )
-    temp = temp.map(lambda x: np.mean(x * np.arange(len(x))), na_action="ignore")
+    temp = temp.map(
+        lambda x: np.mean((x / x.sum()) * np.arange(len(x))), na_action="ignore"
+    )
     mean = temp.apply(lambda x: np.mean(x), axis=1)
     std = temp.apply(lambda x: np.std(x), axis=1)
     return mean, std, temp
 
 
-lr = 0.0001  # FASHION_MNIST
 spec_type = "mr_spectral_density"
-temp_mean, temp_std, temp = plot_ef(quants, spec_type=spec_type, for_lr=lr)
-
+temp_mean, temp_std, temp = plot_ef(quants, spec_type=spec_type)
 # sort rows of temp according to activation functions
-temp_mean = temp_mean.loc[activations]
-temp_std = temp_std.loc[activations]
+# temp_mean = temp_mean.loc[activations]
+# temp_std = temp_std.loc[activations]
 
-temp_mean = temp_mean.squeeze()
-temp_std = temp_std.squeeze()
+# temp_mean = temp_mean.squeeze()
+# temp_std = temp_std.squeeze()
 
 # replace index with nice names
-x_ticks = [activation_betas[x] for x in temp_mean.index]
+temp = temp.drop(index="SOFTPLUS_B50")  # ONLY for FAHION_MNIST
+x_ticks = np.array([activation_betas[x] for x in temp.index])
+finite_max = 2 * np.max(x_ticks[x_ticks != np.inf])
+x_ticks = x_ticks.clip(0, finite_max)
+temp["x"] = x_ticks
+temp = temp.set_index("x")
+temp = temp.sort_index()
+temp.columns = temp.columns.droplevel([0, 2, 3, 4])
+temp = temp.stack()
+temp = temp.reset_index().drop(columns="seed")
+x = np.log(temp["x"])
+y = temp[0]
 
+slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
+reg_line = slope * x + intercept
+
+# # Compute 95% confidence interval for the regression line
+n = len(x)
+mean_x = np.mean(x)
+t_val = stats.t.ppf(0.975, n - 2)  # 95% confidence
+s_err = np.sqrt(np.sum((y - reg_line) ** 2) / (n - 2))
+ci = t_val * s_err * np.sqrt(1 / n + (x - mean_x) ** 2 / np.sum((x - mean_x) ** 2))
+upper = reg_line + ci
+lower = reg_line - ci
+# # Plot the data, regression line, and confidence interval
 plt.figure(figsize=(3, 2))
-plt.plot(temp_mean)
-plt.fill_between(temp_mean.index, temp_mean - temp_std, temp_mean + temp_std, alpha=0.2)
+color = "tab:blue"
+plt.scatter(x, y, alpha=0.3, color=color, s=5)
+plt.fill_between(x, lower, upper, alpha=0.3)
+plt.plot(x, reg_line)
 plt.ylabel("Expected Frequency")
 plt.xlabel(r"$\beta$")
-visible_x_ticks = 7
-plt.xticks(
-    range(len(x_ticks))[:: len(x_ticks) // visible_x_ticks],
-    x_ticks[:: len(x_ticks) // visible_x_ticks],
-)
 
-# y ticks show like 22K 23K 24K
-plt.gca().yaxis.set_major_formatter(mticker.ScalarFormatter(useMathText=True))
+x_ticks = x.unique()
+print(len(x_ticks))
+# good_indices = [0,5,6,9,11,12] # IMAGENETTE_112
+# good_indices = [0,3,5,7,8,9] # IMAGENETTE_224
+# good_indices = [0,7,9,12,13,14] # CIFAR10
+good_indices = [0, 2, 9, 11, 14, 15]  # FAHION_MNIST
+x_ticks = x_ticks[good_indices]
+x_labels = np.exp(x_ticks)
+x_labels = [f"{x:.1f}" if x < 1 else f"{x:.0f}" for x in x_labels]
+x_labels = [x if x != f"{finite_max:.0f}" else r"$\infty$" for x in x_labels]
+plt.xticks(x_ticks, x_labels)
+
+ylims = plt.gca().get_ylim()
+# plt.ylim(ylims[0], ylims[1]*0.93) # IMAGENETTE_112
+# plt.ylim(ylims[0]*1.08, ylims[1]) # CIFAR10
+plt.gca().yaxis.set_major_formatter(mticker.ScalarFormatter())
 plt.gca().ticklabel_format(style="sci", axis="y", scilimits=(2, 4))
 
 plt.savefig(f"{output_dir}{dataset}_{spec_type}_{lr}_ef.pdf", bbox_inches="tight")
 # %% plot depths and activations
+
 
 def plot_depth(quants, spec_type):
     temp = quants.pivot_table(
@@ -983,7 +1031,9 @@ n_rows = len(dpths)
 n_cols = len(lrs)
 factor = 3
 
-fig, axes = plt.subplots(nrows=n_rows, ncols=n_cols, figsize=(factor*n_cols, factor*n_rows),sharex=True)
+fig, axes = plt.subplots(
+    nrows=n_rows, ncols=n_cols, figsize=(factor * n_cols, factor * n_rows), sharex=True
+)
 
 for i, lr in enumerate(lrs):
     for j, dpt in enumerate(dpths):
@@ -1013,3 +1063,253 @@ for i, lr in enumerate(lrs):
 
 dataset_path = os.path.basename(dataset)
 plt.savefig(f"{output_dir}{dataset_path}_{spec_type}_depth.pdf", bbox_inches="tight")
+
+# %% plot SKBN and activations
+
+
+def plot_skbn(quants, spec_type):
+    temp = quants.pivot_table(
+        columns=["lr", "activation", "model_name"],
+        values=spec_type,
+        aggfunc="count",
+    )
+    print(temp)
+    temp = quants.pivot_table(
+        columns=["lr", "activation", "model_name"],
+        values=spec_type,
+        aggfunc="mean",
+    )
+    return temp
+
+
+spec_type = "mr_spectral_density"
+temp = plot_skbn(quants, spec_type=spec_type)
+
+lrs = temp.columns.levels[0]
+activations = temp.columns.levels[1]
+models = temp.columns.levels[2]
+unique_models = models.unique()
+unique_activations = activations.unique()
+prod_act_model = list(itertools.product(unique_activations, unique_models))
+combination_colors = plt.cm.tab20(np.linspace(0.1, 0.9, len(prod_act_model)))
+combination_colors = {
+    (activation, model): color
+    for (activation, model), color in zip(prod_act_model, combination_colors)
+}
+dataset_path = os.path.basename(dataset)
+for lr in lrs:
+    if lr != 0.0001:
+        print("skipping", lr)
+        continue
+    else:
+        print(lr)
+    fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(4, 4))
+    for model in models:
+        for activation in activations:
+            try:
+                plt.plot(
+                    temp[lr][activation][model].values[0],
+                    label=model_nice_names[model] if activation != "RELU" else None,
+                    color=model_colors[model],
+                    alpha=0.5 if activation == "RELU" else 1,
+                )
+            except Exception as e:
+                print(f"missing {activation} {model} {lr}")
+                print(e)
+
+    plt.yscale("log")
+    ylim = plt.gca().get_ylim()
+    rate = 0.0005
+    plt.ylim(ylim[0], ylim[1] * rate)
+
+    plt.plot(
+        [],
+        label="RELU",
+        color="black",
+        alpha=0.5,
+    )
+    plt.plot(
+        [],
+        label=r"SP($\beta$=1)",
+        color="black",
+        alpha=1,
+    )
+
+    plt.ylabel("Spectral Density")
+    plt.xlabel("Frequency")
+    plt.legend()
+    plt.savefig(
+        f"{output_dir}{dataset_path}_{spec_type}_{lr}_skbn.pdf", bbox_inches="tight"
+    )
+
+
+# %% plot SKBN and activations ef
+def plot_skbn(quants, spec_type):
+    temp = quants.pivot_table(
+        columns=["lr", "activation", "model_name"],
+        values=spec_type,
+        aggfunc="count",
+    )
+    print(temp)
+    temp = quants.pivot_table(
+        columns=["lr", "activation", "model_name"],
+        values=spec_type,
+        aggfunc="mean",
+    )
+    temp = temp.map(
+        lambda x: np.mean((x / x.sum()) * np.arange(len(x))), na_action="ignore"
+    )
+    return temp
+
+
+spec_type = "mr_spectral_density"
+temp = plot_skbn(quants, spec_type=spec_type)
+
+lrs = temp.columns.levels[0]
+activations = temp.columns.levels[1]
+models = temp.columns.levels[2]
+unique_models = models.unique()
+unique_activations = activations.unique()
+prod_act_model = list(itertools.product(unique_activations, unique_models))
+combination_colors = plt.cm.tab20(np.linspace(0.1, 0.9, len(prod_act_model)))
+combination_colors = {
+    (activation, model): color
+    for (activation, model), color in zip(prod_act_model, combination_colors)
+}
+dataset_path = os.path.basename(dataset)
+for lr in lrs:
+    if lr != 0.0001:
+        print("skipping", lr)
+        continue
+    else:
+        print(lr)
+    fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(4, 2))
+    for model in models:
+        for activation in activations:
+            try:
+                plt.bar(
+                    x=model_nice_names[model],
+                    width=0.5,
+                    height=temp[lr][activation][model].values[0],
+                    # label=model_nice_names[model]+" "+activation_nice_names[activation],
+                    # color=combination_colors[(activation, model)],
+                    color=model_colors[model],
+                    alpha=0.5,
+                )
+            except Exception as e:
+                print(f"missing {activation} {model} {lr}")
+                print(e)
+
+    plt.bar(
+        x=0,
+        height=0,
+        width=0.5,
+        label="RELU",
+        color="black",
+        alpha=0.5,
+    )
+    plt.bar(
+        x=0,
+        height=0,
+        width=0.5,
+        label=r"SP($\beta=1$)",
+        color="black",
+    )
+
+    plt.ylabel("Expected Frequency")
+    plt.xlabel("Architecture")
+    plt.legend(loc="lower right")
+    # plt.yscale("log")
+    plt.gca().yaxis.set_major_formatter(mticker.ScalarFormatter())
+    plt.gca().ticklabel_format(style="sci", axis="y", scilimits=(-4, -4))
+    ylim = plt.gca().get_ylim()
+    plt.ylim(3.1 * 1e-4, 4.7 * 1e-4)
+    plt.savefig(
+        f"{output_dir}{dataset_path}_{spec_type}_{lr}_skbn_ef.pdf", bbox_inches="tight"
+    )
+
+
+# %% plot banner
+train_dataset, test_dataset = get_imagenette_dataset(
+    local_pathlib.get_local_data_dir(DatasetSwitch.IMAGENETTE),
+    224,
+    augmentation=AugmentationSwitch.EXP_VIS,
+    gaussian_noise_var=0,
+    gaussian_blur_var=0,
+)
+
+
+def plot_mean_rank(path, image_path, is_abs):
+    data = torch.load(path)
+    fig, ax = plt.subplots(figsize=(4, 4))
+    mean_rank = data["mean_rank"]
+    if is_abs:
+        mean_rank = np.abs(mean_rank)
+        ax.imshow(mean_rank, cmap="viridis", vmax=np.quantile(mean_rank, 1 - q))
+    else:
+        ax.imshow(
+            mean_rank,
+            cmap="bwr",
+        )
+    # disable ticks
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    plt.savefig(image_path.replace(".pdf", "_mean_rank.pdf"), bbox_inches="tight")
+    plt.close()
+
+
+def plot_mean(path, image_path, is_abs):
+    data = torch.load(path)
+    fig, ax = plt.subplots(figsize=(4, 4))
+    mean = data["mean"]
+    if is_abs:
+        mean = np.abs(mean)
+        ax.imshow(mean, cmap="viridis", vmax=np.quantile(mean, 1 - q))
+    else:
+        mean = mean - mean.median()
+        vmax = np.quantile(mean, 1 - q)
+        vmin = np.quantile(mean, q)
+        vabs = max(abs(vmax), abs(vmin))
+        ax.imshow(mean, cmap="bwr", vmax=vabs, vmin=-vabs)
+
+    # disable ticks
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    plt.savefig(image_path.replace(".pdf", "_mean.pdf"), bbox_inches="tight")
+    plt.close()
+
+
+def plot_image_from_dataset(path, image_path):
+    data = torch.load(path)
+    index = data["index"]
+    image = test_dataset[index][0]
+    fig, ax = plt.subplots(figsize=(4, 4))
+    ax.imshow(image.squeeze().permute(1, 2, 0))
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    plt.savefig(image_path, bbox_inches="tight")
+    plt.close()
+
+
+quants_path = f".tmp/quants/hooks/*/*.pt"
+paths = glob(quants_path)
+is_abs = False
+q = 0.01
+
+for path in paths:
+    parent_dir = os.path.dirname(path)
+    parent_dir = os.path.basename(parent_dir)
+    image_path = os.path.join(
+        output_dir, os.path.basename(path).replace(".pt", f"_image.pdf")
+    )
+    print(image_path)
+    if not os.path.exists(image_path):
+        plot_image_from_dataset(path, image_path)
+
+    image_path = image_path.replace(".pdf", f"{parent_dir}.pdf")
+    plot_mean_rank(path, image_path, is_abs=is_abs)
+    plot_mean(path, image_path, is_abs=is_abs)
+    # break

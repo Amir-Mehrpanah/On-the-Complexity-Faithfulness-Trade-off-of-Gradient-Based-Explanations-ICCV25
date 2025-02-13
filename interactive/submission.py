@@ -19,7 +19,7 @@ from src.utils import (
 
 seed = [
     0,
-    # 1,
+    1,
     # 2,
     # 3,
     # 4,
@@ -40,8 +40,8 @@ activation = [
     #### because we do string matching sometimes
     #
     #
-    # ActivationSwitch.SOFTPLUS_B_9,
-    # ActivationSwitch.SOFTPLUS_B_8,
+    ActivationSwitch.SOFTPLUS_B_9,
+    ActivationSwitch.SOFTPLUS_B_8,
     # ActivationSwitch.SOFTPLUS_B_7,
     # ActivationSwitch.SOFTPLUS_B_6,
     # ActivationSwitch.SOFTPLUS_B_5,
@@ -51,10 +51,10 @@ activation = [
     # ActivationSwitch.SOFTPLUS_B_1,
     # ActivationSwitch.SOFTPLUS_B100,
     # ActivationSwitch.SOFTPLUS_B50,
-    # ActivationSwitch.SOFTPLUS_B10,
-    # ActivationSwitch.SOFTPLUS_B7,
-    # ActivationSwitch.SOFTPLUS_B5,
-    # ActivationSwitch.SOFTPLUS_B3,
+    ActivationSwitch.SOFTPLUS_B10,
+    ActivationSwitch.SOFTPLUS_B7,
+    ActivationSwitch.SOFTPLUS_B5,
+    ActivationSwitch.SOFTPLUS_B3,
     # ActivationSwitch.SOFTPLUS_B2,
     ActivationSwitch.SOFTPLUS_B1,
 ]
@@ -67,23 +67,23 @@ add_inverse = [
     False,
 ]
 model_name = [
-    # ModelSwitch.SIMPLE_CNN_DEPTH
-    ModelSwitch.SIMPLE_CNN,
-    ModelSwitch.SIMPLE_CNN_BN,
-    ModelSwitch.SIMPLE_CNN_SK,
-    ModelSwitch.SIMPLE_CNN_SK_BN,
+    ModelSwitch.SIMPLE_CNN_DEPTH
+    # ModelSwitch.SIMPLE_CNN,
+    # ModelSwitch.SIMPLE_CNN_BN,
+    # ModelSwitch.SIMPLE_CNN_SK,
+    # ModelSwitch.SIMPLE_CNN_SK_BN,
     # ModelSwitch.RESNET_BASIC,
     # ModelSwitch.RESNET_BOTTLENECK,
 ]
 layers = [
-    [],
+    # [],
     # [1],
     # [2],
     # [3],
     # [4],
     # [5],
     # [6],
-    # [7],
+    [7],
     # [1, 1, 1, 1],
     # [2, 2, 2, 2],
     # [3, 3, 3, 3],
@@ -117,8 +117,8 @@ num_workers = [16]
 prefetch_factor = [8]
 img_size = [
     # 28,
-    # 46,
     # 32,
+    # 46,
     # 64,
     # 112,
     224,
@@ -129,30 +129,30 @@ l2_reg = [
     # 1e-3,
 ]
 lr = [
-    5e-3,
-    3e-3,
-    1e-3,
+    # 5e-3,
+    # 3e-3,
+    # 1e-3,
     5e-4,
     4e-4,
     3e-4,
     2e-4,
     1e-4,
-    5e-5,
-    3e-5,
-    4e-5,
-    1e-5,
+    # 5e-5,
+    # 3e-5,
+    # 4e-5,
+    # 1e-5,
 ]
 # %% submit training
 batch_size = [256]
-min_test_acc = [0.6]
-patience = [1]
+min_test_acc = [0.5]
+patience = [500]
 
 ckpt_mod = [1]  # checkpoint if epoch % ckpt_mod == 0
-epochs = [100]
-lr_decay_gamma = [0.98]
+epochs = [500]
+lr_decay_gamma = [1 - 1e-4]
 warmup_epochs_ratio = 0.0
-gaussian_noise_var = [0.0]
-gaussian_blur_var = [0.0]
+gaussian_noise_var = [0.02]
+gaussian_blur_var = [0.02]
 
 submit_training(
     seed=seed,
@@ -204,7 +204,7 @@ eval_only_on_test = [True]
 stats = [
     {
         "mean_rank": None,
-        # "mean": None,
+        "mean": None,
         # "var_rank": None,
         # "var": None,
         "correct": None,
@@ -243,8 +243,12 @@ submit_grads(
 
 
 # %% run measurements on grads
-hook_samples = [[]]
+hook_samples = [[202,303,404,505,606,707,808,909]]
 name = [
+    # "IMAGENETTE/NONE",
+    # "IMAGENETTE/SK",
+    # "IMAGENETTE/BN",
+    # "IMAGENETTE/SKBN",
     "IMAGENETTE",
     # "IMAGENETTE/112",
     # "IMAGENETTE/224",

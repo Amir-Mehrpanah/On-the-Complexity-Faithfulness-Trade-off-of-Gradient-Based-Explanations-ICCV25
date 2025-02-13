@@ -193,9 +193,9 @@ def train(dataloader, model, loss_fn, optimizer, epoch, device, writer):
         total_loss += loss.item()
         loss = loss / x.size(0)
         loss.backward()
-        grad_norm += torch.norm(
-            torch.cat([p.grad.view(-1) for p in model.parameters()])
-        ).item()
+        # grad_norm += torch.norm(
+        #     torch.cat([p.grad.view(-1) for p in model.parameters() if p.grad is not None])
+        # ).item()
         optimizer.step()
 
         correct = (pred.argmax(1) == y).type(torch.float).sum().item()
@@ -208,7 +208,7 @@ def train(dataloader, model, loss_fn, optimizer, epoch, device, writer):
 
     total_loss = total_loss / size
     total_correct = total_correct / size
-    grad_norm = grad_norm / size
+    # grad_norm = grad_norm / size
     if writer is not None:
         writer.add_scalar("Loss/train_epoch", total_loss, epoch)
         writer.add_scalar("Accuracy/train_epoch", total_correct, epoch)
@@ -217,11 +217,11 @@ def train(dataloader, model, loss_fn, optimizer, epoch, device, writer):
         #     torch.norm(torch.cat([p.view(-1) for p in model.parameters()])),
         #     epoch,
         # )
-        writer.add_scalar(
-            "GradNorm",
-            grad_norm,
-            epoch,
-        )
+        # writer.add_scalar(
+        #     "GradNorm",
+        #     grad_norm,
+        #     epoch,
+        # )
     print(f"train accuracy: {(100*total_correct):>0.1f}%, train loss: {total_loss:>8f}")
     return total_loss, total_correct
 
@@ -353,6 +353,8 @@ def main(
             saved_any_checkpoint = True
             save_pth(
                 model,
+                train_acc,
+                test_acc,
                 path=checkpoint_path,
             )
 
