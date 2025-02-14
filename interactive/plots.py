@@ -19,8 +19,8 @@ output_dir = ".tmp/visualizations/paper/"
 input_size = 224
 dataset = [
     # f"*/IMAGENETTE::_*",
-    f"IMAGENETTE/*::_*",
     # f"IMAGENETTE/{input_size}::_*",
+    f"IMAGENETTE::_*",
     # f"CIFAR10::_*",
     # f"FASHION_MNIST::_*",
 ][0]
@@ -116,15 +116,15 @@ activations = [
     # "SOFTPLUS_B_5",
     # "SOFTPLUS_B_6",
     # "SOFTPLUS_B_7",
-    # "SOFTPLUS_B_8",
+    "SOFTPLUS_B_8",
     "SOFTPLUS_B_9",
     "SOFTPLUS_B1",
-    "SOFTPLUS_B2",
+    # "SOFTPLUS_B2",
     "SOFTPLUS_B3",
     # "SOFTPLUS_B4",
     "SOFTPLUS_B5",
-    # "SOFTPLUS_B7",
-    # "SOFTPLUS_B10",
+    "SOFTPLUS_B7",
+    "SOFTPLUS_B10",
     # "SOFTPLUS_B50",
     # "SOFTPLUS_B100",
     "RELU",
@@ -892,12 +892,12 @@ def plot_activations(quants, spec_type, for_lr=None):
 #         plt.savefig(f"{output_dir}{dataset}_{spec_type}_{lr}.pdf")
 #         plt.close()
 
-# lr = 0.0001 # IMAEGNETTE_224
-# r = 0.0005
+lr = 0.0001  # IMAEGNETTE_224
+r = 0.0005
 # lr = 0.0005 # IMAEGNETTE_112
 # r = 0.005
-lr = 0.003  # CIFAR10
-r = 0.003
+# lr = 0.003  # CIFAR10
+# r = 0.003
 # lr = 0.0001  # FASHION_MNIST
 # r = 0.05
 for spec_type in [
@@ -1313,3 +1313,93 @@ for path in paths:
     plot_mean_rank(path, image_path, is_abs=is_abs)
     plot_mean(path, image_path, is_abs=is_abs)
     # break
+
+# %% plot accuracy
+checkpoints_path = "checkpoints/**/*.pt"
+paths = glob(checkpoints_path, recursive=True)
+print(paths)
+
+finite_max = 20
+beta_train, acc_train = [], []
+beta_test, acc_test = [], []
+for path in paths:
+    data = torch.load(path, map_location="cpu")
+    val_acc = data["test_acc"]
+    train_acc = data["train_acc"]
+    activation = path.split("::")[2]
+    if activation == "RELU":
+        beta = finite_max
+    else:
+        beta = activation_betas[activation]
+    beta = np.log(beta)
+    beta_train.append(beta)
+    acc_train.append(train_acc)
+    beta_test.append(beta)
+    acc_test.append(val_acc)
+
+print(beta_test)
+
+
+def scatter_plot_with_regression(
+    x,
+    y,
+    good_indices,
+    ax,
+    xlabel=r"$\beta$",
+    color="tab:blue",
+    ylabel="forgotten",
+    label="forgotten",
+    finite_max=20,
+):
+    # sort x values and y according to x
+    x, y = zip(*sorted(zip(x, y)))
+    x = np.array(x)
+    y = np.array(y)
+
+    slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
+    reg_line = slope * x + intercept
+
+    # Compute 95% confidence interval for the regression line
+    n = len(x)
+    mean_x = np.mean(x)
+    t_val = stats.t.ppf(0.975, n - 2)  # 95% confidence
+    s_err = np.sqrt(np.sum((y - reg_line) ** 2) / (n - 2))
+    ci = t_val * s_err * np.sqrt(1 / n + (x - mean_x) ** 2 / np.sum((x - mean_x) ** 2))
+    upper = reg_line + ci
+    lower = reg_line - ci
+
+    # Plot the data, regression line, and confidence interval
+    ax.scatter(x, y, alpha=0.3, color=color, s=5, label=label)
+    ax.fill_between(x, lower, upper, color=color, alpha=0.3)
+    ax.plot(x, reg_line, color=color)
+    ax.set_ylabel(ylabel)
+    ax.set_xlabel(xlabel)
+
+    x_ticks = np.unique(x)
+    x_ticks = x_ticks[good_indices]
+    x_labels = np.exp(x_ticks)
+    x_labels = [f"{x:.1f}" if x < 1 else f"{x:.0f}" for x in x_labels]
+    x_labels = [x if x != f"{finite_max:.0f}" else r"$\infty$" for x in x_labels]
+    ax.set_xticks(x_ticks, x_labels)
+
+fig, ax = plt.subplots(figsize=(5, 3))
+
+good_indices = [0,3, 4, 6, 7]
+scatter_plot_with_regression(
+    beta_train,
+    acc_train,
+    good_indices,
+    ax,
+    label="Train",
+)
+scatter_plot_with_regression(
+    beta_test,
+    acc_test,
+    good_indices,
+    ax,
+    ylabel="Accuracy",
+    color="tab:orange",
+    label="Test",
+)
+ax.legend()
+plt.savefig(f"{output_dir}{dataset}_acc.pdf", bbox_inches="tight")

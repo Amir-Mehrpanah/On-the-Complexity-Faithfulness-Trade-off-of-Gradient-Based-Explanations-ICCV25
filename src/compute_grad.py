@@ -398,7 +398,7 @@ def main(
     ).to(device)
 
     checkpoint = torch.load(checkpoint_path, map_location=device)
-    model.load_state_dict(checkpoint) # ["model"]
+    model.load_state_dict(checkpoint["model"])
     model.eval()
 
     compute_grad_and_save(

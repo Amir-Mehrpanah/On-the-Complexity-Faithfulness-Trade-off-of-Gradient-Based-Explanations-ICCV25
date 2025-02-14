@@ -8,7 +8,6 @@ from submission.utils import (
     submit_measurements,
     submit_training,
     submit_grads,
-    visualize_hooks,
 )
 from src.utils import (
     ActivationSwitch,
@@ -188,7 +187,7 @@ num_batches = [1]
 batch_size = [1]
 epoch = [0]
 num_distinct_images = [1000]
-gaussian_noise_var = [  # the data loader parameters not for the post-hoc explanation method
+gaussian_noise_var = [  # the data loader parameters not for post-hoc explanation methods
     0.0,
     # 1e-5,
     # 1e-4,
@@ -196,7 +195,7 @@ gaussian_noise_var = [  # the data loader parameters not for the post-hoc explan
     # 1e-2,
     # 1e-1,
 ]
-gaussian_blur_var = [  # the data loader parameters not for the post-hoc explanation method
+gaussian_blur_var = [  # the data loader parameters not for post-hoc explanation methods
     0.0,
     # 1.0,
 ]
@@ -243,7 +242,7 @@ submit_grads(
 
 
 # %% run measurements on grads
-hook_samples = [[202,303,404,505,606,707,808,909]]
+hook_samples = [[]] # 202,303,404,505,606,707,808,909
 name = [
     # "IMAGENETTE/NONE",
     # "IMAGENETTE/SK",
@@ -265,17 +264,6 @@ submit_measurements(
     prefetch_factor=prefetch_factor,
     hook_samples=hook_samples,
 )
-
-# %% visualize
-hook_samples = [[51]]
-keys = [
-    # "var",
-    # "mean",
-    # "var_rank",
-    "mean_rank",
-    "image",
-]
-visualize_hooks(DatasetSwitch.IMAGENETTE, hook_samples, keys)
 
 # %% extract the grad results
 # os.system("bash src/ext.sh")

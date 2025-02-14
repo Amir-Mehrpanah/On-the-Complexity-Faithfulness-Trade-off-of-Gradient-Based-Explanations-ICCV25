@@ -199,33 +199,3 @@ def execute_job_submission(
             results = [job.result() for job in jobs]
             print("All jobs finished")
             return results
-
-
-def visualize_hooks(
-    Dataset,
-    hook_samples,
-    keys,
-):
-    for j in hook_samples[0]:
-        os.makedirs(f".tmp/visualizations/{j}", exist_ok=True)
-        glob_path = f".tmp/quants/hooks/*/{j}.pt"
-        paths = glob(glob_path)
-        print(glob_path, len(paths))
-        for path in paths:
-            data = torch.load(path)
-            corrects = data["correct"]
-            batch_size = data["batch_size"]
-            print(os.path.basename(glob_path), "corrects", corrects, batch_size)
-            prefix = path.split("/")[-2]
-            for key in keys:
-                if key == "image":
-                    if os.path.exists(f".tmp/visualizations/{j}/{key}.png"):
-                        continue
-                    temp = np.transpose(data[key], (1, 2, 0))
-                    plt.imshow(temp)
-                    plt.savefig(f".tmp/visualizations/{j}/{key}.png")
-                else:
-                    temp = data[key]
-                    plt.imshow(temp)
-                    plt.savefig(f".tmp/visualizations/{j}/{key}_{prefix}.png")
-                plt.close()
