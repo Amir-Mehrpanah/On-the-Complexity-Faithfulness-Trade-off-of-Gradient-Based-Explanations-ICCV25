@@ -108,8 +108,8 @@ def get_experiment_prefix(
     name_list.append(activation)
     name_list.append(seed)
     name_list.append(l2_reg)
-    # name_list.append(gaussian_noise_var)
-    # name_list.append(gaussian_blur_var)
+    name_list.append(gaussian_noise_var)
+    name_list.append(gaussian_blur_var)
     name_list.append(lr)
     return os.path.join(
         str(dataset),

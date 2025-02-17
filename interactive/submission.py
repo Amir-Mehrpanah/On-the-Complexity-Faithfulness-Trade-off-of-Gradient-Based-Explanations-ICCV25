@@ -18,7 +18,7 @@ from src.utils import (
 
 seed = [
     0,
-    1,
+    # 1,
     # 2,
     # 3,
     # 4,
@@ -40,7 +40,7 @@ activation = [
     #
     #
     ActivationSwitch.SOFTPLUS_B_9,
-    ActivationSwitch.SOFTPLUS_B_8,
+    # ActivationSwitch.SOFTPLUS_B_8,
     # ActivationSwitch.SOFTPLUS_B_7,
     # ActivationSwitch.SOFTPLUS_B_6,
     # ActivationSwitch.SOFTPLUS_B_5,
@@ -80,9 +80,9 @@ layers = [
     # [2],
     # [3],
     # [4],
-    # [5],
+    [5],
     # [6],
-    [7],
+    # [7],
     # [1, 1, 1, 1],
     # [2, 2, 2, 2],
     # [3, 3, 3, 3],
@@ -132,9 +132,9 @@ lr = [
     # 3e-3,
     # 1e-3,
     5e-4,
-    4e-4,
+    # 4e-4,
     3e-4,
-    2e-4,
+    # 2e-4,
     1e-4,
     # 5e-5,
     # 3e-5,
@@ -143,15 +143,15 @@ lr = [
 ]
 # %% submit training
 batch_size = [256]
-min_test_acc = [0.5]
-patience = [500]
+min_test_acc = [0.6]
+patience = [1]
 
 ckpt_mod = [1]  # checkpoint if epoch % ckpt_mod == 0
-epochs = [500]
+epochs = [100]
 lr_decay_gamma = [1 - 1e-4]
 warmup_epochs_ratio = 0.0
-gaussian_noise_var = [0.02]
-gaussian_blur_var = [0.02]
+gaussian_noise_var = [0.05,0.10,0.20,0.30,0.40,0.50,0.60,0.70,0.80,0.90,1.00]
+gaussian_blur_var = [0.00]
 
 submit_training(
     seed=seed,
@@ -187,18 +187,7 @@ num_batches = [1]
 batch_size = [1]
 epoch = [0]
 num_distinct_images = [1000]
-gaussian_noise_var = [  # the data loader parameters not for post-hoc explanation methods
-    0.0,
-    # 1e-5,
-    # 1e-4,
-    # 1e-3,
-    # 1e-2,
-    # 1e-1,
-]
-gaussian_blur_var = [  # the data loader parameters not for post-hoc explanation methods
-    0.0,
-    # 1.0,
-]
+no_perturbation = [True]
 eval_only_on_test = [True]
 stats = [
     {
@@ -228,6 +217,7 @@ submit_grads(
     prefetch_factor=prefetch_factor,
     gaussian_noise_var=gaussian_noise_var,
     gaussian_blur_var=gaussian_blur_var,
+    no_perturbation=no_perturbation,
     num_batches=num_batches,
     add_inverse=add_inverse,
     seed=seed,
@@ -248,11 +238,15 @@ name = [
     # "IMAGENETTE/SK",
     # "IMAGENETTE/BN",
     # "IMAGENETTE/SKBN",
-    "IMAGENETTE",
+    # "IMAGENETTE",
     # "IMAGENETTE/112",
     # "IMAGENETTE/224",
     # "CIFAR10",
     # "FASHION_MNIST",
+    # "IMAGENETTE/j0",
+    # "IMAGENETTE/j1",
+    # "IMAGENETTE/j2",
+    # "IMAGENETTE/j3",
 ]
 num_workers = [8]
 submit_measurements(

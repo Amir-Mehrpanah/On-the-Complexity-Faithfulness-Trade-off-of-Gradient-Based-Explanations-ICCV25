@@ -3,24 +3,26 @@ import itertools
 import numpy as np
 import pandas as pd
 from glob import glob
+from tqdm import tqdm
 import matplotlib.ticker as mticker
 from scipy import stats
 import torch
 import matplotlib.pyplot as plt
 import os
-from src import paths as local_pathlib
+os.chdir("/home/x_amime/x_amime/projects/kernel-view-to-explainability/")
 
+from src import paths as local_pathlib
 from src.datasets import get_imagenette_dataset
 from src.utils import AugmentationSwitch, DatasetSwitch
 
-os.chdir("/home/x_amime/x_amime/projects/kernel-view-to-explainability/")
 
 output_dir = ".tmp/visualizations/paper/"
 input_size = 224
 dataset = [
     # f"*/IMAGENETTE::_*",
     # f"IMAGENETTE/{input_size}::_*",
-    f"IMAGENETTE::_*",
+    f"IMAGENETTE/*::_*",
+    # f"IMAGENETTE::_*",
     # f"CIFAR10::_*",
     # f"FASHION_MNIST::_*",
 ][0]
@@ -28,7 +30,7 @@ quants_path = f".tmp/quants/{dataset}quants.pt"
 paths = glob(quants_path)
 print("found quants paths", paths)
 quants = []
-for path in paths:
+for path in tqdm(paths):
     quants.extend(torch.load(path))
 
 quants = pd.DataFrame(quants)
@@ -36,7 +38,7 @@ quants = pd.DataFrame(quants)
 quants["noise_scale"] = quants["noise_scale"].astype(float)
 quants["index"] = quants["index"].astype(int)
 temp = quants["address"].apply(lambda x: x[0].split("/")[-2].split("::"))
-# print("columns:", temp)
+print("columns:", temp.iloc[0])
 temp = pd.DataFrame(
     temp.tolist(),
     columns=[
@@ -45,12 +47,16 @@ temp = pd.DataFrame(
         "activation",
         "seed",
         "l2reg",
+        "tgnv",
+        "tgbv",
         # "input_size",
         "lr",
-        "ns",
+        "egnv",
+        "egbv",
     ],
 )
-temp.drop(columns=["ns"], inplace=True)
+temp.drop(columns=["egnv"], inplace=True)
+temp.drop(columns=["egbv"], inplace=True)
 temp["input_size"] = input_size
 temp["lr"] = temp["lr"].astype(float)
 quants = pd.concat([quants, temp], axis=1)
@@ -63,6 +69,7 @@ quants = quants.set_index(
         "l2reg",
         "input_size",
         "noise_scale",
+        "tgnv",
         "model_name",
         "lr",
         "index",
@@ -116,7 +123,7 @@ activations = [
     # "SOFTPLUS_B_5",
     # "SOFTPLUS_B_6",
     # "SOFTPLUS_B_7",
-    "SOFTPLUS_B_8",
+    # "SOFTPLUS_B_8",
     "SOFTPLUS_B_9",
     "SOFTPLUS_B1",
     # "SOFTPLUS_B2",
@@ -1403,3 +1410,48 @@ scatter_plot_with_regression(
 )
 ax.legend()
 plt.savefig(f"{output_dir}{dataset}_acc.pdf", bbox_inches="tight")
+
+# %% plot tail gaussian noise var
+
+def plot_tgnv_ef(quants, spec_type, for_lr=None):
+    temp = quants.pivot_table(
+        columns=["lr","tgnv"],
+        index="activation",
+        values=spec_type,
+        aggfunc="count",
+    )
+    print(temp)
+    temp = quants.pivot_table(
+        columns=["lr","tgnv"],
+        index="activation",
+        values=spec_type,
+        aggfunc="mean",
+    )
+    temp = temp.map(
+        lambda x: np.mean((x / x.sum()) * np.arange(len(x))), na_action="ignore"
+    )
+    mean = temp.apply(lambda x: np.mean(x), axis=1)
+    std = temp.apply(lambda x: np.std(x), axis=1)
+    return mean, std, temp
+
+spec_type = "mr_spectral_density"
+temp_mean, temp_std, temp = plot_tgnv_ef(quants, spec_type=spec_type)
+print(temp.columns.get_level_values(0))
+temp = temp[0.0005]
+x_ticks = np.array([activation_betas[x] for x in temp.index])
+finite_max = 2 * np.max(x_ticks[x_ticks != np.inf])
+x_ticks = x_ticks.clip(0, finite_max)
+temp["x"] = x_ticks
+temp = temp.set_index("x")
+temp = temp.sort_index()
+# temp.columns = temp.columns.droplevel([0])
+temp = temp.stack()
+temp = temp.reset_index()
+temp.rename(columns={0: "0"}, inplace=True)
+temp.sort_values(by="x", inplace=True)
+
+import seaborn as sns
+sns.heatmap(temp.pivot_table(index="x", columns="tgnv", values="0"))
+
+# plt.savefig(f"{output_dir}{dataset}_{spec_type}_{lr}_ef.pdf", bbox_inches="tight")
+# %% plot tail gaussian noise var

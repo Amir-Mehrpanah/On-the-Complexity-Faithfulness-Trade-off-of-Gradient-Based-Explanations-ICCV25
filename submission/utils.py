@@ -41,7 +41,7 @@ def submit_training(
     )
     base_path = os.path.dirname(args["checkpoint_path"][0])
     os.makedirs(base_path, exist_ok=True)
-    
+
     checkpoint_exists = args["checkpoint_path"].apply(lambda x: os.path.exists(x))
     print("Checkpoints skipped because they do already exist")
     args[checkpoint_exists]["checkpoint_path"].apply(print)
@@ -63,6 +63,7 @@ def submit_grads(
     block_main,
     port,
     timeout,
+    no_perturbation,
     **args,
 ):
     print(f"time: {datetime.now()}")
@@ -80,7 +81,7 @@ def submit_grads(
     args["timeout"] = timeout
     args["experiment_prefix"] = args.apply(
         lambda x: get_experiment_prefix(**x)
-        + f"{EXPERIMENT_PREFIX_SEP}{x.gaussian_noise_var}",
+        + f"{EXPERIMENT_PREFIX_SEP}{0 if no_perturbation else x.gaussian_noise_var}{EXPERIMENT_PREFIX_SEP}{0 if no_perturbation else x.gaussian_blur_var}",
         axis=1,
     )
     args["experiment_output_dir"] = args.apply(
@@ -96,6 +97,13 @@ def submit_grads(
         ),
         axis=1,
     )
+    if no_perturbation:
+        args["gaussian_noise_var"] = 0.0
+        args["gaussian_blur_var"] = 0.0
+        print(
+            "No perturbation is applied so noise and blur are set to 0 for grad computation."
+        )
+
     output_dir_exists = args["experiment_output_dir"].apply(lambda x: os.path.exists(x))
     checkpoint_exists = args["checkpoint_path"].apply(lambda x: os.path.exists(x))
     valid_ids = checkpoint_exists & ~output_dir_exists
@@ -161,6 +169,11 @@ def execute_job_submission(
     nunique = repr_args.nunique()
     print(nunique)
     print("total num of jobs", len(args))
+
+    if "checkpoint_path" in nunique:
+        if nunique["checkpoint_path"] != len(args):
+            print("ATTENTION!!!\n Some checkpoint paths seem to be the same!")
+            
     if len(args) == 0:
         print("No jobs to run exiting")
         return
@@ -169,7 +182,7 @@ def execute_job_submission(
         print("Running only the first job because of the debug flag")
         jobs_args = [jobs_args[0]]
 
-    print("Do you want to continue? [y/n]")
+    print("Do you want to continue? [y/n]", flush=True)
     if input() != "y":
         print("Aborted")
         return

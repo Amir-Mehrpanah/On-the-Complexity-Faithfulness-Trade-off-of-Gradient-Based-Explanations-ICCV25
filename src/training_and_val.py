@@ -319,7 +319,7 @@ def main(
         f"Experiment model_name {model_name} activation {activation} layers {layers}"
         f" loss {loss} bias {bias} add_inverse {add_inverse} l2_reg {l2_reg}"
         f" ({batch_size},{input_shape}) pre_act {pre_act}"
-        f" gaussian_noise_var {gaussian_noise_var}"
+        f" gaussian_noise_var {gaussian_noise_var} gaussian_blur_var {gaussian_blur_var}"
     )
     old_test_acc = 0
     saved_any_checkpoint = False
