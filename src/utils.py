@@ -45,6 +45,16 @@ class ModelSwitch(ConvertableEnum):
     RESNET_BOTTLENECK = 1006
 
 
+class ExplainerSwitch(ConvertableEnum):
+    # GRAD = 0 # implemented in our code
+    GRAD_CAM = 1
+    GUIDED_BPP = 2
+    DEEP_LIFT = 3
+    # SMOOTH_GRAD = 4 # not implemented in captum
+    INTEGRATED_GRAD = 5
+    LRP = 6
+
+
 class ActivationSwitch(ConvertableEnum):
     SOFTPLUS_B_01 = 11
     SOFTPLUS_B_1 = 12
@@ -173,6 +183,41 @@ def convert_str_to_activation_fn(activation):
         return nn.Softplus(beta)
 
     raise NameError(str_activation)
+
+
+def convert_str_to_explainer(explainer, model, model_name):
+    from captum import attr
+
+    if ExplainerSwitch.GRAD_CAM == explainer:
+        if ModelSwitch.RESNET18 == model_name:
+            return attr.GuidedGradCam(model, model.layer4[1].conv2)
+        if ModelSwitch.RESNET34 == model_name:
+            return attr.GuidedGradCam(model, model.layer4[1].conv2)
+        if ModelSwitch.RESNET50 == model_name:
+            return attr.GuidedGradCam(model, model.layer4[2].conv3)
+        if ModelSwitch.SIMPLE_CNN_DEPTH == model_name:
+            return attr.GuidedGradCam(model, model.features[-1])
+        raise NameError(model_name)
+
+    if ExplainerSwitch.LRP == explainer:
+        if ModelSwitch.RESNET18 == model_name:
+            return attr.LayerLRP(model, model.layer4[1].conv2)
+        if ModelSwitch.RESNET34 == model_name:
+            return attr.LayerLRP(model, model.layer4[1].conv2)
+        if ModelSwitch.RESNET50 == model_name:
+            return attr.LayerLRP(model, model.layer4[2].conv3)
+        if ModelSwitch.SIMPLE_CNN_DEPTH == model_name:
+            return attr.LayerLRP(model, model.features[-1])
+        raise NameError(model_name)
+
+    if ExplainerSwitch.DEEP_LIFT == explainer:
+        return attr.DeepLift(model)
+    if ExplainerSwitch.GUIDED_BPP == explainer:
+        return attr.GuidedBackprop(model)
+    if ExplainerSwitch.INTEGRATED_GRAD == explainer:
+        return attr.IntegratedGradients(model)
+
+    raise NameError(explainer)
 
 
 def convert_str_to_loss_fn(loss):

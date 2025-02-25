@@ -222,7 +222,6 @@ def compute_grad_and_save(
             target_class = get_target_class(x_clean, model)
 
         grad, output = forward_batch_grad(model, x, target_class)
-        # grad = grad**2
 
         correct = ((output.argmax(-1) == y).sum() / y.shape[0]).detach().cpu()
         grad_mean = torch.mean(grad, dim=0).detach().cpu()
@@ -398,7 +397,10 @@ def main(
     ).to(device)
 
     checkpoint = torch.load(checkpoint_path, map_location=device)
-    model.load_state_dict(checkpoint["model"])
+    try:
+        model.load_state_dict(checkpoint["model"])
+    except KeyError:
+        model.load_state_dict(checkpoint)
     model.eval()
 
     compute_grad_and_save(

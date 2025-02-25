@@ -1,3 +1,4 @@
+import copy
 from torch import nn
 
 
@@ -18,7 +19,7 @@ class SimpleConvNet(nn.Module):
 
         self.features = nn.Sequential(
             nn.Conv2d(C, 16, kernel_size=3, stride=1, padding=1, bias=conv_bias),
-            activation,
+            copy.deepcopy(activation),
             nn.MaxPool2d(kernel_size=2, stride=2),
         )
         n_features = 16 * (H // 2) * (W // 2)
@@ -34,22 +35,23 @@ class SimpleConvNet(nn.Module):
                     bias=conv_bias,
                 ),
             )
-            self.features.add_module(f"{activation.__class__.__name__}{i}", activation)
+            self.features.add_module(
+                f"{activation.__class__.__name__}{i}", copy.deepcopy(activation)
+            )
             self.features.add_module(
                 f"maxpool{i}", nn.MaxPool2d(kernel_size=2, stride=2)
             )
             n_features = 16 * 2 ** (i + 1) * (H // 2 ** (i + 2)) * (W // 2 ** (i + 2))
 
-        self.flatten = nn.Flatten()
         self.classifier = nn.Sequential(
             nn.Linear(n_features, 512, bias=fc_bias),
-            activation,
+            copy.deepcopy(activation),
             nn.Linear(512, num_classes, bias=fc_bias),
         )
 
     def forward(self, x):
         x = self.features(x)
-        x = self.flatten(x)
+        x = x.view(x.size(0), -1)  # same as x.flatten(1)
         x = self.classifier(x)
         return x
 
