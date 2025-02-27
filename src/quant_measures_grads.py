@@ -38,19 +38,17 @@ def spectral_density(image):
 def measure_grads(data):
     results = {
         "mr_spectral_density": spectral_density(data["mean_rank"]),
-        # "m_spectral_density": spectral_density(data["mean"]),
+        "m_spectral_density": spectral_density(data["mean"]),
         # "cosine_similarity": cosine_similarity(data),
         # "vr_spectral_density": spectral_density(data["var_rank"]),
         # "v_spectral_density": spectral_density(data["var"]),
     }
-    freq = np.arange(1, len(results["mr_spectral_density"]) + 1)
-    norm_sd = results["mr_spectral_density"] / results["mr_spectral_density"].sum()
+    freq = np.linspace(0, 1, len(results["mr_spectral_density"]))
+    # see paper eq 5
     results["mr_expected_spectral_density"] = (
-        freq * norm_sd
+        freq * results["mr_spectral_density"] / results["mr_spectral_density"].sum()
     ).mean()
-    # results["m_expected_spectral_density"] = (
-    #     freq * results["m_spectral_density"]
-    # ).mean()
+
     # results["vr_expected_spectral_density"] = (
     #     freq * results["vr_spectral_density"]
     # ).mean()
@@ -75,7 +73,7 @@ def main(
     print(f"kwargs: {kwargs}")
     hooks_dir = os.path.join(output_dir, "hooks")
     os.makedirs(hooks_dir, exist_ok=True)
-    
+
     # check if name is a path like path_files/file_prefix or only file_prefix
     # create path_files if it does not exist
     if os.path.dirname(name):

@@ -6,6 +6,7 @@ FASHION_MNIST_ROOT = f"{DATASETS_COMMON}/FashionMNIST"
 CIFAR10_ROOT = f"{DATASETS_COMMON}/cifar-10-batches-py"
 CIFAR100_ROOT = f"{DATASETS_COMMON}/cifar-100-python"
 IMAGENETTE_ROOT = f"{DATASETS_COMMON}/imagenette2.tgz"
+IMAGENET_ROOT = f"{DATASETS_COMMON}/imagenetval.tgz"
 GRADS_ROOT = f"{WORKDIR}/.tmp/outputs/"
 
 

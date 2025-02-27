@@ -237,6 +237,8 @@ CIFAR10_MEAN = (0.49139968, 0.48215841, 0.44653091)
 CIFAR10_STD = (0.24703223, 0.24348513, 0.26158784)
 IMAGENETTE_MEAN = (0.485, 0.456, 0.406)
 IMAGENETTE_STD = (0.229, 0.224, 0.225)
+IMAGENET_MEAN = (0.485, 0.456, 0.406)
+IMAGENET_STD = (0.229, 0.224, 0.225)
 FASHION_MNIST_MEAN = (0.5,)
 FASHION_MNIST_STD = (0.5,)
 MNIST_MEAN = (0.5,)
@@ -244,8 +246,8 @@ MNIST_STD = (0.5,)
 
 
 # see b-cos v2 for this
-# We are adding this to do an ablation study
-# turns out not important enough to be in our paper!
+# We have added this to do an ablation study
+# turns out not important enough to be in the paper.
 class AddInverse(torch.nn.Module):
     """To a [B, C, H, W] input add the inverse channels of the given one to it.
     Results in a [B, 2C, H, W] output. Single image [C, H, W] is also accepted.
@@ -260,6 +262,186 @@ class AddInverse(torch.nn.Module):
 
     def forward(self, in_tensor: torch.Tensor) -> torch.Tensor:
         return torch.cat([in_tensor, 1 - in_tensor], dim=self.dim)
+
+
+@register_dataset(DatasetSwitch.IMAGENET)
+def get_imagenet_dataset(
+    root_path,
+    img_size,
+    add_inverse,
+    gaussian_noise_var,
+    gaussian_blur_var,
+    augmentation,
+    **kwargs,
+):
+    img_size = 224 if img_size is None else img_size
+    label_transform = None
+    training_data = get_imagenet_train(
+        root_path,
+        img_size,
+        add_inverse,
+        gaussian_noise_var,
+        gaussian_blur_var,
+        augmentation,
+        label_transform,
+    )
+    test_data = get_imagenet_test(
+        root_path,
+        img_size,
+        add_inverse,
+        gaussian_noise_var,
+        gaussian_blur_var,
+        augmentation,
+        label_transform,
+    )
+
+    return training_data, test_data
+
+
+def get_imagenet_train(
+    root_path,
+    img_size,
+    add_inverse,
+    gaussian_noise_var,
+    gaussian_blur_var,
+    augmentation,
+    label_transform=None,
+):
+    assert isinstance(
+        augmentation, AugmentationSwitch
+    ), f"Augmentation must be an enum of type AugmentationSwitch"
+
+    augmentations_ = get_aug_imagenet(
+        img_size,
+        augmentation,
+        add_inverse,
+        gaussian_noise_var,
+        gaussian_blur_var,
+        "train",
+    )
+
+    training_data = datasets.ImageNet(
+        root=root_path,
+        split="train",
+        transform=augmentations_,
+        target_transform=label_transform,
+        download=False,
+    )
+
+    return training_data
+
+
+def get_imagenet_test(
+    root_path,
+    img_size,
+    add_inverse,
+    gaussian_noise_var,
+    gaussian_blur_var,
+    augmentation=AugmentationSwitch.TRAIN,
+    label_transform=None,
+):
+    assert isinstance(
+        augmentation, AugmentationSwitch
+    ), f"Augmentation must be an enum of type AugmentationSwitch"
+
+    augmentations_ = get_aug_imagenet(
+        img_size,
+        augmentation,
+        add_inverse,
+        gaussian_noise_var,
+        gaussian_blur_var,
+        "test",
+    )
+
+    test_data = datasets.ImageNet(
+        root=root_path,
+        split="val",
+        transform=augmentations_,
+        target_transform=label_transform,
+        download=False,
+    )
+
+    return test_data
+
+
+def get_aug_imagenet(
+    img_size,
+    augmentation,
+    add_inverse,
+    gaussian_noise_var,
+    gaussian_blur_var,
+    split,
+):
+    if augmentation == AugmentationSwitch.TRAIN:
+        if split == "train":
+            augmentations = [
+                torchvision.transforms.ToTensor(),
+                torchvision.transforms.RandomResizedCrop(img_size),
+                torchvision.transforms.RandomChoice(
+                    [
+                        torchvision.transforms.RandomHorizontalFlip(),
+                        torchvision.transforms.RandomVerticalFlip(),
+                        torchvision.transforms.ColorJitter(
+                            brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1
+                        ),
+                        torchvision.transforms.RandomRotation(10),
+                        torchvision.transforms.RandomAffine(
+                            degrees=5, translate=(0.1, 0.1)
+                        ),
+                        torchvision.transforms.RandomPerspective(distortion_scale=0.1),
+                        torchvision.transforms.RandomErasing(p=0.25, value="random"),
+                        torchvision.transforms.RandomGrayscale(p=0.1),
+                    ]
+                ),
+                # ablation of Bcos
+                (
+                    AddInverse()
+                    if add_inverse
+                    else torchvision.transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD)
+                ),
+                GaussianISONoise(gaussian_noise_var),
+            ]
+            if gaussian_blur_var > 0:
+                augmentations.append(
+                    torchvision.transforms.GaussianBlur(5, gaussian_blur_var)
+                )
+        elif split == "test":
+            augmentations = [
+                torchvision.transforms.ToTensor(),
+                torchvision.transforms.Resize((img_size, img_size)),
+                (
+                    # ablation of Bcos
+                    AddInverse()
+                    if add_inverse
+                    else torchvision.transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD)
+                ),
+            ]
+        else:
+            raise ValueError
+    elif augmentation == AugmentationSwitch.EXP_GEN:
+        augmentations = [
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Resize((img_size, img_size)),
+            (
+                # ablation of Bcos
+                AddInverse()
+                if add_inverse
+                else torchvision.transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD)
+            ),
+        ]
+        if gaussian_noise_var > 0:
+            augmentations.append(GaussianISONoise(gaussian_noise_var))
+        if gaussian_blur_var > 0:
+            augmentations.append(
+                torchvision.transforms.GaussianBlur(5, gaussian_blur_var)
+            )
+    if augmentation == AugmentationSwitch.EXP_VIS:
+        augmentations = (
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Resize((img_size, img_size)),
+        )
+    augmentations = torchvision.transforms.Compose(augmentations)
+    return augmentations
 
 
 @register_dataset(DatasetSwitch.IMAGENETTE)

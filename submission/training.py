@@ -45,7 +45,6 @@ def main(args):
     ) = resolve_data_directories(args)
 
     os.system("module load Fpart/1.5.1-gcc-8.5.0")
-
     move_data_to_compute_node(DATA_DIR, EXT == "tgz", COMPUTE_DATA_DIR)
 
     extract_the_dataset_on_compute_node(COMPUTE_DATA_DIR, EXT, TARGET_DIR)
