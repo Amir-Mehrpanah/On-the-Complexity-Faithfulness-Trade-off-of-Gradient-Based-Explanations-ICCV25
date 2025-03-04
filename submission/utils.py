@@ -78,8 +78,6 @@ def submit_explainers(
     args["experiment_prefix"] = args.apply(
         lambda x: get_experiment_prefix(
             **x,
-            gaussian_noise_var=0,
-            gaussian_blur_var=0,
         )
         + f"{EXPERIMENT_PREFIX_SEP}{x.explainer}",
         axis=1,
@@ -94,8 +92,6 @@ def submit_explainers(
     args["checkpoint_path"] = args.apply(
         lambda x: get_save_path(
             **x,
-            gaussian_noise_var=0,
-            gaussian_blur_var=0,
         ),
         axis=1,
     )

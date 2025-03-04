@@ -8,9 +8,11 @@ from submission.utils import (
     submit_measurements,
     submit_training,
     submit_grads,
+    submit_explainers,
 )
 from src.utils import (
     ActivationSwitch,
+    ExplainerSwitch,
     LossSwitch,
     DatasetSwitch,
     ModelSwitch,
@@ -30,6 +32,7 @@ seed = [
 ]
 activation = [
     ActivationSwitch.RELU,
+    # Only for ablation studies:
     # ActivationSwitch.LEAKY_RELU,
     # ActivationSwitch.SIGMOID,
     # ActivationSwitch.TANH,
@@ -39,7 +42,7 @@ activation = [
     #### because we do string matching sometimes
     #
     #
-    ActivationSwitch.SOFTPLUS_B_9,
+    # ActivationSwitch.SOFTPLUS_B_9,
     # ActivationSwitch.SOFTPLUS_B_8,
     # ActivationSwitch.SOFTPLUS_B_7,
     # ActivationSwitch.SOFTPLUS_B_6,
@@ -50,12 +53,12 @@ activation = [
     # ActivationSwitch.SOFTPLUS_B_1,
     # ActivationSwitch.SOFTPLUS_B100,
     # ActivationSwitch.SOFTPLUS_B50,
-    ActivationSwitch.SOFTPLUS_B10,
-    ActivationSwitch.SOFTPLUS_B7,
-    ActivationSwitch.SOFTPLUS_B5,
-    ActivationSwitch.SOFTPLUS_B3,
+    # ActivationSwitch.SOFTPLUS_B10,
+    # ActivationSwitch.SOFTPLUS_B7,
+    # ActivationSwitch.SOFTPLUS_B5,
+    # ActivationSwitch.SOFTPLUS_B3,
     # ActivationSwitch.SOFTPLUS_B2,
-    ActivationSwitch.SOFTPLUS_B1,
+    # ActivationSwitch.SOFTPLUS_B1,
 ]
 loss = [
     LossSwitch.CE,
@@ -66,21 +69,22 @@ add_inverse = [
     False,
 ]
 model_name = [
-    ModelSwitch.SIMPLE_CNN_DEPTH
+    # ModelSwitch.SIMPLE_CNN_DEPTH
     # ModelSwitch.SIMPLE_CNN,
     # ModelSwitch.SIMPLE_CNN_BN,
     # ModelSwitch.SIMPLE_CNN_SK,
     # ModelSwitch.SIMPLE_CNN_SK_BN,
     # ModelSwitch.RESNET_BASIC,
     # ModelSwitch.RESNET_BOTTLENECK,
+    ModelSwitch.RESNET50,
 ]
 layers = [
-    # [],
+    [],
     # [1],
     # [2],
     # [3],
     # [4],
-    [5],
+    # [5],
     # [6],
     # [7],
     # [1, 1, 1, 1],
@@ -95,7 +99,8 @@ layers = [
 dataset = [
     # DatasetSwitch.FASHION_MNIST,
     # DatasetSwitch.CIFAR10,
-    DatasetSwitch.IMAGENETTE,
+    # DatasetSwitch.IMAGENETTE,
+    DatasetSwitch.IMAGENET,
 ]
 bias = [False]
 pre_act = [
@@ -131,9 +136,9 @@ lr = [
     # 5e-3,
     # 3e-3,
     # 1e-3,
-    5e-4,
+    # 5e-4,
     # 4e-4,
-    3e-4,
+    # 3e-4,
     # 2e-4,
     1e-4,
     # 5e-5,
@@ -141,18 +146,19 @@ lr = [
     # 4e-5,
     # 1e-5,
 ]
+
 # %% submit training
 batch_size = [256]
-min_test_acc = [0.6]
+min_test_acc = [0.0]
 patience = [1]
 
 ckpt_mod = [1]  # checkpoint if epoch % ckpt_mod == 0
-epochs = [100]
+epochs = [1]
 lr_decay_gamma = [1 - 1e-4]
 warmup_epochs_ratio = 0.0
-gaussian_noise_var = [0.05,0.10,0.20,0.30,0.40,0.50,0.60,0.70,0.80,0.90,1.00]
-gaussian_blur_var = [0.00]
-
+gaussian_noise_var = [0.0]
+gaussian_blur_var = [0.0]
+timeout = 60
 submit_training(
     seed=seed,
     activation=activation,
@@ -183,8 +189,15 @@ submit_training(
 )
 
 # %% submit grads
+gaussian_noise_var = [0.0]
+gaussian_blur_var = [0.0]
+e_gaussian_noise_var = [
+    # 0.0,  # vg
+    0.1,  # sg
+]
+e_gaussian_blur_var = [0.0]
 num_batches = [1]
-batch_size = [1]
+batch_size = [64] # SG 64, VG 1
 epoch = [0]
 num_distinct_images = [1000]
 no_perturbation = [True]
@@ -201,7 +214,7 @@ stats = [
         "batch_size": None,
     }
 ]
-
+timeout = 10
 submit_grads(
     timeout=timeout,
     batch_size=batch_size,
@@ -215,9 +228,10 @@ submit_grads(
     block_main=block_main,
     num_workers=num_workers,
     prefetch_factor=prefetch_factor,
-    gaussian_noise_var=gaussian_noise_var,
-    gaussian_blur_var=gaussian_blur_var,
-    no_perturbation=no_perturbation,
+    gaussian_noise_var=gaussian_noise_var,  # training noise
+    gaussian_blur_var=gaussian_blur_var,  # training blur
+    e_gaussian_noise_var=e_gaussian_noise_var,  # explainer noise
+    e_gaussian_blur_var=e_gaussian_blur_var,  # explainer blur
     num_batches=num_batches,
     add_inverse=add_inverse,
     seed=seed,
@@ -230,25 +244,86 @@ submit_grads(
     lr=lr,
 )
 
+# %% submit explainers
+explainer = [
+    ExplainerSwitch.GRAD_CAM,
+    ExplainerSwitch.LRP,
+    ExplainerSwitch.DEEP_LIFT,
+    ExplainerSwitch.INTEGRATED_GRAD,
+    ExplainerSwitch.GUIDED_BPP,
+]
+gaussian_noise_var = [0.0]
+gaussian_blur_var = [0.0]
+num_batches = [1]
+batch_size = [1]
+epoch = [0]
+num_distinct_images = [1000]
+eval_only_on_test = [True]
+stats = [
+    {
+        "mean_rank": None,
+        "mean": None,
+        "correct": None,
+        "image": None,
+        "label": None,
+        "batch_size": None,
+    }
+]
+timeout = 10
+submit_explainers(
+    timeout=timeout,
+    explainer=explainer,
+    batch_size=batch_size,
+    activation=activation,
+    dataset=dataset,
+    model_name=model_name,
+    layers=layers,
+    img_size=img_size,
+    bias=bias,
+    port=port,
+    block_main=block_main,
+    num_workers=num_workers,
+    prefetch_factor=prefetch_factor,
+    gaussian_noise_var=gaussian_noise_var,  # training noise
+    gaussian_blur_var=gaussian_blur_var,  # training blur
+    num_batches=num_batches,
+    add_inverse=add_inverse,
+    seed=seed,
+    eval_only_on_test=eval_only_on_test,
+    pre_act=pre_act,
+    stats=stats,
+    epoch=epoch,
+    num_distinct_images=num_distinct_images,
+    l2_reg=l2_reg,
+    lr=lr,
+)
 
 # %% run measurements on grads
-hook_samples = [[]] # 202,303,404,505,606,707,808,909
+hook_samples = [
+    [
+        404,
+    ]
+]  # 202,303,404,505,606,707,808,909
 name = [
+    # "IMAGENETTE",
     # "IMAGENETTE/NONE",
     # "IMAGENETTE/SK",
     # "IMAGENETTE/BN",
     # "IMAGENETTE/SKBN",
-    # "IMAGENETTE",
+    # "IMAGENETTE/32",
+    # "IMAGENETTE/46",
+    # "IMAGENETTE/64",
     # "IMAGENETTE/112",
     # "IMAGENETTE/224",
-    # "CIFAR10",
-    # "FASHION_MNIST",
     # "IMAGENETTE/j0",
     # "IMAGENETTE/j1",
     # "IMAGENETTE/j2",
     # "IMAGENETTE/j3",
+    # "CIFAR10",
+    # "FASHION_MNIST",
+    "IMAGENET",
 ]
-num_workers = [8]
+timeout = 20
 submit_measurements(
     name=name,
     timeout=timeout,
@@ -258,10 +333,6 @@ submit_measurements(
     prefetch_factor=prefetch_factor,
     hook_samples=hook_samples,
 )
-
-# %% extract the grad results
-# os.system("bash src/ext.sh")
-
 # %% remove stuff
 import os
 
@@ -276,3 +347,15 @@ os.chdir(cwd)
 # !rm -r logs/12*
 # !rm -r .tmp/extracted/*
 # !rm -r .tmp/outputs/*
+
+# %% only for debugging
+
+# arch = get_model(
+#     model_name=ModelSwitch.RESNET50,
+#     input_shape=(3, 224, 224),
+#     num_classes=1000,
+#     activation_fn=torch.nn.ReLU,
+#     layers=[],
+#     bias=False,
+#     pre_act=False,
+# )

@@ -1,4 +1,6 @@
+import copy
 from typing import Any, Callable, List, Optional, Type, Union
+
 from torch import nn
 import torch
 
@@ -79,7 +81,8 @@ class BasicBlock(nn.Module):
             conv_bias=conv_bias,
         )
         self.bn1 = norm_layer(inplanes if pre_act else planes)
-        self.activation = activation
+        self.activation1 = copy.deepcopy(activation)
+        self.activation2 = copy.deepcopy(activation)
         self.conv2 = conv3x3(
             in_planes=planes,
             out_planes=planes,
@@ -98,7 +101,7 @@ class BasicBlock(nn.Module):
         identity = x
 
         out = self.bn1(x)
-        out = self.activation(out)
+        out = self.activation1(out)
 
         if self.downsample is not None:
             identity = self.downsample(out)
@@ -106,7 +109,7 @@ class BasicBlock(nn.Module):
         out = self.conv1(out)
 
         out = self.bn2(out)
-        out = self.activation(out)
+        out = self.activation2(out)
         out = self.conv2(out)
 
         out += identity
@@ -117,7 +120,7 @@ class BasicBlock(nn.Module):
         identity = x
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.activation(out)
+        out = self.activation1(out)
 
         out = self.conv2(out)
         out = self.bn2(out)
@@ -126,7 +129,7 @@ class BasicBlock(nn.Module):
             identity = self.downsample(x)
 
         out += identity
-        out = self.activation(out)
+        out = self.activation2(out)
 
         return out
 
@@ -182,7 +185,9 @@ class Bottleneck(nn.Module):
             conv_bias=conv_bias,
         )
         self.bn3 = norm_layer(width if pre_act else planes * self.expansion)
-        self.activation = activation
+        self.activation1 = copy.deepcopy(activation)
+        self.activation2 = copy.deepcopy(activation)
+        self.activation3 = copy.deepcopy(activation)
         self.downsample = downsample
         self.stride = stride
 
@@ -194,7 +199,7 @@ class Bottleneck(nn.Module):
     def forward_preact(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
         out = self.bn1(x)
-        out = self.activation(out)
+        out = self.activation1(out)
 
         if self.downsample is not None:
             identity = self.downsample(out)
@@ -202,11 +207,11 @@ class Bottleneck(nn.Module):
         out = self.conv1(out)
 
         out = self.bn2(out)
-        out = self.activation(out)
+        out = self.activation2(out)
         out = self.conv2(out)
 
         out = self.bn3(out)
-        out = self.activation(out)
+        out = self.activation3(out)
         out = self.conv3(out)
 
         out += identity
@@ -218,11 +223,11 @@ class Bottleneck(nn.Module):
 
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.activation(out)
+        out = self.activation1(out)
 
         out = self.conv2(out)
         out = self.bn2(out)
-        out = self.activation(out)
+        out = self.activation2(out)
 
         out = self.conv3(out)
         out = self.bn3(out)
@@ -231,7 +236,7 @@ class Bottleneck(nn.Module):
             identity = self.downsample(x)
 
         out += identity
-        out = self.activation(out)
+        out = self.activation3(out)
 
         return out
 
@@ -283,7 +288,7 @@ class ResNet(nn.Module):
             bias=conv_bias,
         )
         self.bn1 = norm_layer(self.inplanes)
-        self.activation = activation
+        self.activation1 = copy.deepcopy(activation)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(
             block=block,
@@ -424,7 +429,7 @@ class ResNet(nn.Module):
         # See note [TorchScript super()]
         x = self.conv1(x)
         x = self.bn1(x)
-        x = self.activation(x)
+        x = self.activation1(x)
         x = self.maxpool(x)
 
         x = self.layer1(x)
@@ -442,7 +447,7 @@ class ResNet(nn.Module):
         # See note [TorchScript super()]
         x = self.conv1(x)
         x = self.bn1(x)
-        x = self.activation(x)
+        x = self.activation1(x)
         x = self.maxpool(x)
 
         x = self.layer1(x)

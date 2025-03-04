@@ -7,7 +7,7 @@ import torch
 import subprocess
 from glob import glob
 
-from src.utils import AugmentationSwitch, DatasetSwitch, EXPERIMENT_PREFIX_SEP
+from src.utils import AugmentationSwitch, DatasetSwitch
 from src import paths
 
 registered_datasets = {}
@@ -198,14 +198,12 @@ def get_training_and_test_dataloader(
     # dict lookup instead of if-else
     training_data, test_data = registered_datasets[dataset](
         root_path=root_path,
+        get_only_test=get_only_test,
         **dataset_kwargs,
     )
-    num_classes = len(training_data.classes)
-    input_shape = training_data[0][0].shape
-    assert input_shape == test_data[0][0].shape
-
+    num_classes = len(test_data.classes)
+    input_shape = test_data[0][0].shape
     test_sampler = None if sampler is None else sampler(test_data)
-    train_sampler = None if sampler is None else sampler(training_data)
 
     # DATA LOADER
     test_dataloader = DataLoader(
@@ -219,6 +217,8 @@ def get_training_and_test_dataloader(
 
     if get_only_test:
         return test_dataloader, input_shape, num_classes
+    
+    train_sampler = None if sampler is None else sampler(training_data)
 
     train_dataloader = DataLoader(
         training_data,
@@ -272,11 +272,12 @@ def get_imagenet_dataset(
     gaussian_noise_var,
     gaussian_blur_var,
     augmentation,
+    get_only_test,
     **kwargs,
 ):
     img_size = 224 if img_size is None else img_size
     label_transform = None
-    training_data = get_imagenet_train(
+    test_data = get_imagenet_test(
         root_path,
         img_size,
         add_inverse,
@@ -285,7 +286,11 @@ def get_imagenet_dataset(
         augmentation,
         label_transform,
     )
-    test_data = get_imagenet_test(
+
+    if get_only_test:
+        return None, test_data
+
+    training_data = get_imagenet_train(
         root_path,
         img_size,
         add_inverse,
@@ -325,7 +330,6 @@ def get_imagenet_train(
         split="train",
         transform=augmentations_,
         target_transform=label_transform,
-        download=False,
     )
 
     return training_data
@@ -358,7 +362,6 @@ def get_imagenet_test(
         split="val",
         transform=augmentations_,
         target_transform=label_transform,
-        download=False,
     )
 
     return test_data
