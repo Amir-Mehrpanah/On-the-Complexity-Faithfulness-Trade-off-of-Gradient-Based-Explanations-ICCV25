@@ -5,6 +5,8 @@ import os
 import torch
 from torch import nn
 
+from src import paths
+
 
 def determine_device(args):
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -43,6 +45,8 @@ class ModelSwitch(ConvertableEnum):
     RESNET50 = 1004
     RESNET_BASIC = 1005
     RESNET_BOTTLENECK = 1006
+    VIT_16 = 10010
+    VIT_32 = 10011
 
 
 class ExplainerSwitch(ConvertableEnum):
@@ -136,7 +140,8 @@ def get_save_path(
     # bias = "bias" if bias else "nobias"
     # add_inverse = "inv" if add_inverse else "noinv"
     experiment_prefix = get_experiment_prefix(**kwargs)
-    return f"checkpoints/{experiment_prefix}.pt"
+    path = os.path.join(paths.CHECKPOINTS_DIR, experiment_prefix)
+    return path + ".pt"
 
 
 def save_pth(
@@ -145,7 +150,7 @@ def save_pth(
     test_acc,
     path,
 ):
-    """Saves the model to a .pth file.
+    """Saves the model to a .pt file.
 
     Args:
       model: The model to save.
@@ -198,6 +203,9 @@ def convert_str_to_explainer(explainer, model, model_name):
             return attr.GuidedGradCam(model, model.layer4[2].conv3)
         if ModelSwitch.SIMPLE_CNN_DEPTH == model_name:
             return attr.GuidedGradCam(model, model.features[-1])
+        if ModelSwitch.VIT_16 == model_name:
+            return attr.GuidedGradCam(model, model.conv_proj)
+
         raise NameError(model_name)
 
     if ExplainerSwitch.LRP == explainer:
@@ -205,10 +213,10 @@ def convert_str_to_explainer(explainer, model, model_name):
 
     if ExplainerSwitch.DEEP_LIFT == explainer:
         return attr.DeepLift(model)
-    
+
     if ExplainerSwitch.GUIDED_BPP == explainer:
         return attr.GuidedBackprop(model)
-    
+
     if ExplainerSwitch.INTEGRATED_GRAD == explainer:
         return attr.IntegratedGradients(model)
 

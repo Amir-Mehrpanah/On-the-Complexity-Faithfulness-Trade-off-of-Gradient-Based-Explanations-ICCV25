@@ -1,30 +1,16 @@
-import argparse
 import numpy as np
 from scipy.stats import rankdata
 import os
 import torch
 
+from src.compute_grad import get_target_class
 from src.datasets import RepeatedSequentialSampler, get_training_and_test_dataloader
 from src.models.utils import get_model
 from src.utils import (
-    ActivationSwitch,
     AugmentationSwitch,
-    DatasetSwitch,
-    ModelSwitch,
     convert_str_to_activation_fn,
     convert_str_to_explainer,
-    get_save_path,
 )
-
-
-def get_target_class(
-    x,
-    model,
-):
-    output = model(x)
-    output = output - output.logsumexp(dim=-1, keepdim=True)
-    target_label = output.argmax(-1).squeeze(0)
-    return target_label
 
 
 def compute_explainer_and_save(
@@ -40,6 +26,7 @@ def compute_explainer_and_save(
 ):
     explanations = []
     print("Starting to compute grads")
+    q_10_num_distinct_images = max(num_distinct_images // 10, 1)
     for i, (x, y) in enumerate(noisy_dataloader):
         x, y = x.to(device), y.to(device)
         target_class = get_target_class(x, model)
@@ -71,6 +58,9 @@ def compute_explainer_and_save(
 
         if (num_distinct_images > 0) and (i // num_batches >= num_distinct_images - 1):
             break
+        else:
+            if i % q_10_num_distinct_images == 0:
+                print("[", i // num_batches, "/", num_distinct_images, "]")
 
 
 def rank_normalize(input_gradient):
@@ -91,7 +81,7 @@ def save_state(
     stats,
 ):
     explanations = torch.stack(explanations)
-    assert len(explanations.shape) == 4
+    assert len(explanations.shape) == 4, f"Expected 4D tensor, got {explanations.shape}"
 
     if "mean" in stats or "mean_rank" in stats:
         agg_means = torch.mean(explanations, dim=0)
@@ -185,17 +175,13 @@ def main(
         add_inverse=add_inverse,
         pre_act=pre_act,
         layers=layers,
-    ).to(device)
-
-    explainer = convert_str_to_explainer(explainer, model, model_name)
-    checkpoint = torch.load(checkpoint_path, map_location=device)
-    try:
-        model.load_state_dict(checkpoint["model"])
-    except KeyError:
-        print("Loading model from older checkpoint")
-        model.load_state_dict(checkpoint)  # for older checkpoints
+        checkpoint_path=checkpoint_path,
+        device=device,
+    )
 
     model.eval()
+
+    explainer = convert_str_to_explainer(explainer, model, model_name)
 
     compute_explainer_and_save(
         explainer,

@@ -155,13 +155,21 @@ def get_inputs():
     return args
 
 
+def forward_lse(
+    x,
+    model,
+):
+    output = model(x)
+    output = output - output.logsumexp(dim=-1, keepdim=True)
+    return output
+
+
 def forward_single(
     x,
     model,
     target_class,
 ):
-    output = model(x)
-    output = output - output.logsumexp(dim=-1, keepdim=True)
+    output = forward_lse(x, model)
     return output[:, target_class].squeeze(0), output
 
 
@@ -169,8 +177,7 @@ def get_target_class(
     x,
     model,
 ):
-    output = model(x)
-    output = output - output.logsumexp(dim=-1, keepdim=True)
+    output = forward_lse(x, model)
     target_label = output.argmax(-1).squeeze(0)
     return target_label
 
@@ -212,6 +219,7 @@ def compute_grad_and_save(
     grad_vars = []
     corrects = []
     iter_loader = iter(clean_dataloader)
+    q_10_num_distinct_images = max(num_distinct_images // 10, 1)
     print("Starting to compute grads")
     for i, (x, y) in enumerate(noisy_dataloader):
         x, y = x.to(device), y.to(device)
@@ -251,6 +259,9 @@ def compute_grad_and_save(
 
         if (num_distinct_images > 0) and (i // num_batches >= num_distinct_images - 1):
             break
+        else:
+            if i % q_10_num_distinct_images == 0:
+                print("[", i // num_batches, "/", num_distinct_images, "]")
 
 
 def rank_normalize(input_gradient):
@@ -394,13 +405,10 @@ def main(
         add_inverse=add_inverse,
         pre_act=pre_act,
         layers=layers,
-    ).to(device)
+        checkpoint_path=checkpoint_path,
+        device=device,
+    )
 
-    checkpoint = torch.load(checkpoint_path, map_location=device)
-    try:
-        model.load_state_dict(checkpoint["model"])
-    except KeyError:
-        model.load_state_dict(checkpoint)
     model.eval()
 
     compute_grad_and_save(
@@ -417,11 +425,16 @@ def main(
     if eval_only_on_test:
         return
 
-    #     compute_grad_and_save(
-    #         train_dataloader,
-    #         model,
-    #         num_distinct_images,
-    #         num_batches,
-    #         output_dir,
-    #         device,
-    #     )
+    raise NotImplementedError("Explanation methods are not used for training set")
+
+    compute_grad_and_save(
+        train_dataloader,
+        exp_gen_train_dataloader,
+        model,
+        num_distinct_images,
+        num_batches,
+        output_dir,
+        stats,
+        device,
+        gaussian_noise_var,
+    )

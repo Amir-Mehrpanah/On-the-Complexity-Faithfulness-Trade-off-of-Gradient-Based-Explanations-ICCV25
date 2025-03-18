@@ -311,6 +311,8 @@ def main(
         add_inverse=add_inverse,
         pre_act=pre_act,
         layers=layers,
+        checkpoint_path=checkpoint_path,
+        device=device,
     )
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=l2_reg)

@@ -108,7 +108,9 @@ def submit_explainers(
     print("Valid args:")
     args[valid_ids]["experiment_output_dir"].apply(print)
 
-    return execute_job_submission(block_main, port, timeout, valid_args, explainers.main)
+    return execute_job_submission(
+        block_main, port, timeout, valid_args, explainers.main
+    )
 
 
 def submit_grads(
@@ -158,6 +160,8 @@ def submit_grads(
     valid_ids = checkpoint_exists & ~output_dir_exists
     valid_args = args[valid_ids]
 
+    print("Checkpoints are available:")
+    args[checkpoint_exists]["checkpoint_path"].apply(print)
     print("Checkpoints not available:")
     args[~checkpoint_exists]["checkpoint_path"].apply(print)
     print("Output dirs skipped:")

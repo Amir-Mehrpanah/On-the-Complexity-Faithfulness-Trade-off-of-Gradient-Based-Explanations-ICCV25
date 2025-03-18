@@ -1,3 +1,5 @@
+import os
+import torch
 from src.models.resnet import BasicBlock, Bottleneck, ResNet
 from src.models.simple_cnn import SimpleConvNet, SimpleConvSKBN
 from src.utils import ModelSwitch
@@ -12,8 +14,11 @@ def get_model(
     bias,
     pre_act,
     layers,
+    checkpoint_path,
+    device,
     **kwargs,
 ):
+    model = None
     if model_name in [
         ModelSwitch.SIMPLE_CNN,
         ModelSwitch.SIMPLE_CNN_BN,
@@ -28,7 +33,7 @@ def get_model(
             ModelSwitch.SIMPLE_CNN_SK,
             ModelSwitch.SIMPLE_CNN_SK_BN,
         ]
-        return SimpleConvSKBN(
+        model = SimpleConvSKBN(
             input_shape,
             num_classes,
             activation_fn,
@@ -39,7 +44,7 @@ def get_model(
         )
 
     if ModelSwitch.SIMPLE_CNN_DEPTH == model_name:
-        return SimpleConvNet(
+        model = SimpleConvNet(
             input_shape,
             num_classes,
             activation_fn,
@@ -49,7 +54,7 @@ def get_model(
         )
 
     if ModelSwitch.RESNET_BASIC == model_name:
-        return ResNet(
+        model = ResNet(
             BasicBlock,
             layers=layers,
             activation=activation_fn,
@@ -61,7 +66,7 @@ def get_model(
         )
 
     if ModelSwitch.RESNET_BOTTLENECK == model_name:
-        return ResNet(
+        model = ResNet(
             Bottleneck,
             layers=layers,
             activation=activation_fn,
@@ -73,7 +78,7 @@ def get_model(
         )
 
     if ModelSwitch.RESNET18 == model_name:
-        return ResNet(
+        model = ResNet(
             BasicBlock,
             [2, 2, 2, 2],
             activation=activation_fn,
@@ -85,7 +90,7 @@ def get_model(
         )
 
     if ModelSwitch.RESNET34 == model_name:
-        return ResNet(
+        model = ResNet(
             BasicBlock,
             [3, 4, 6, 3],
             activation=activation_fn,
@@ -97,7 +102,7 @@ def get_model(
         )
 
     if ModelSwitch.RESNET50 == model_name:
-        return ResNet(
+        model = ResNet(
             Bottleneck,
             [3, 4, 6, 3],
             activation=activation_fn,
@@ -108,4 +113,35 @@ def get_model(
             fc_bias=True,
         )
 
-    raise NameError(model_name)
+    if ModelSwitch.VIT_16 == model_name:
+        import torchvision.models
+
+        C, H, W = input_shape
+        assert (H == 224) & (W == 224), "ViT-16 expects 224x224 input size."
+
+        model = torchvision.models.vit_b_16()
+
+    if ModelSwitch.VIT_32 == model_name:
+        from torchvision.models import vit_b_32
+
+        C, H, W = input_shape
+        assert (H == 384) & (W == 384), "ViT-32 expects 384x384 input size."
+        raise NotImplementedError("ViT-32 not implemented yet.")
+
+    if model is None:
+        raise NameError(model_name)
+
+    model.to(device)
+
+    if os.path.exists(checkpoint_path):
+        print(f"Loading model from {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+
+        try:
+            model.load_state_dict(checkpoint["model"])
+        except KeyError:
+            print("Loading model from older checkpoint")
+            model.load_state_dict(checkpoint)  # for older checkpoints
+    else:
+        print("No checkpoint found")
+    return model

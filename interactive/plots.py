@@ -17,14 +17,15 @@ from src.utils import AugmentationSwitch, DatasetSwitch
 
 
 output_dir = ".tmp/visualizations/paper/"
-input_size = 224
+input_size = 112
 dataset = [
     # f"*/IMAGENETTE::_*",
     # f"IMAGENETTE/{input_size}::_*",
-    f"IMAGENETTE/*::_*",
+    # f"IMAGENETTE/*::_*",
     # f"IMAGENETTE::_*",
+    # f"IMAGENET::_*",
     # f"CIFAR10::_*",
-    # f"FASHION_MNIST::_*",
+    f"FASHION_MNIST::_*",
 ][0]
 quants_path = f".tmp/quants/{dataset}quants.pt"
 paths = glob(quants_path)
@@ -47,18 +48,21 @@ temp = pd.DataFrame(
         "activation",
         "seed",
         "l2reg",
-        "tgnv",
-        "tgbv",
+        # "tgnv",
+        # "tgbv",
         # "input_size",
         "lr",
+        # "explainer_name",
         "egnv",
-        "egbv",
+        # "egbv",
     ],
 )
-temp.drop(columns=["egnv"], inplace=True)
-temp.drop(columns=["egbv"], inplace=True)
+# temp.drop(columns=["egnv"], inplace=True)
+# temp.drop(columns=["egbv"], inplace=True)
 temp["input_size"] = input_size
 temp["lr"] = temp["lr"].astype(float)
+if "explainer_name" in temp.columns:
+    temp.explainer_name.fillna("VG", inplace=True)
 quants = pd.concat([quants, temp], axis=1)
 
 quants = quants.set_index(
@@ -69,7 +73,7 @@ quants = quants.set_index(
         "l2reg",
         "input_size",
         "noise_scale",
-        "tgnv",
+        # "tgnv",
         "model_name",
         "lr",
         "index",
@@ -78,6 +82,7 @@ quants = quants.set_index(
 quants = quants.sort_index()
 quants.value_counts("activation")
 # %% constants
+faint_grids_alpha = 0.5
 activation_betas = {
     "RELU": np.inf,
     "LEAKY_RELU": np.inf,
@@ -116,22 +121,22 @@ activations = [
     # "LEAKY_RELU",
     # "SIGMOID",
     # "TANH",
-    # "SOFTPLUS_B_1",
+    "SOFTPLUS_B_1",
     # "SOFTPLUS_B_2",
-    # "SOFTPLUS_B_3",
+    "SOFTPLUS_B_3",
     # "SOFTPLUS_B_4",
-    # "SOFTPLUS_B_5",
+    "SOFTPLUS_B_5",
     # "SOFTPLUS_B_6",
-    # "SOFTPLUS_B_7",
+    "SOFTPLUS_B_7",
     # "SOFTPLUS_B_8",
-    "SOFTPLUS_B_9",
+    # "SOFTPLUS_B_9",
     "SOFTPLUS_B1",
-    # "SOFTPLUS_B2",
-    "SOFTPLUS_B3",
+    "SOFTPLUS_B2",
+    # "SOFTPLUS_B3",
     # "SOFTPLUS_B4",
     "SOFTPLUS_B5",
-    "SOFTPLUS_B7",
-    "SOFTPLUS_B10",
+    # "SOFTPLUS_B7",
+    # "SOFTPLUS_B10",
     # "SOFTPLUS_B50",
     # "SOFTPLUS_B100",
     "RELU",
@@ -160,6 +165,17 @@ model_nice_names = {
     "SIMPLE_CNN_SK_BN": "SK+BN",
     "RESNET_BASIC": "ResNet Basic",
     "RESNET_BOTTLENECK": "ResNet Bottleneck",
+}
+explainer_nice_names = {
+    "DEEP_LIFT": "DeepLIFT",
+    "GRAD_CAM": "GradCAM",
+    "GUIDED_BPP": "GuidedBP",
+    "INTEGRATED_GRAD": "IntGrad",
+    "SG": "SmoothGrad",
+    "LRP": "LRP",
+    "VG": "VanillaGrad",
+    "0.0": "VanillaGrad",
+    "0.1": "SmoothGrad",
 }
 
 
@@ -778,7 +794,7 @@ def plot_activations(quants, spec_type, for_lr=None):
         values=spec_type,
         aggfunc="mean",
     )
-    factor = 3.5
+    factor = 3.5 # 2.5 for banner and 3.5 for main experiments
     n_rows = len(temp.columns.levels[1])
     n_cols = len(temp.columns.levels[0])
     fig, axes = plt.subplots(
@@ -799,6 +815,7 @@ def plot_activations(quants, spec_type, for_lr=None):
                     and len(temp.columns.levels[1]) == 1
                 ):
                     ax = axes
+
                 elif len(temp.columns.levels[0]) == 1:
                     ax = axes[lid]
                 else:
@@ -888,7 +905,7 @@ def plot_activations(quants, spec_type, for_lr=None):
 #     plt.savefig(f"{output_dir}{dataset}_{spec_type}_all.pdf")
 #     plt.close()
 
-# for lr in quants.index.levels[7]:
+# for lr in quants.index.levels[8]:
 #     for spec_type in [
 #         "mr_spectral_density",
 #         # "vr_spectral_density",
@@ -899,14 +916,20 @@ def plot_activations(quants, spec_type, for_lr=None):
 #         plt.savefig(f"{output_dir}{dataset}_{spec_type}_{lr}.pdf")
 #         plt.close()
 
-lr = 0.0001  # IMAEGNETTE_224
-r = 0.0005
+# import matplotlib as mpl
+
+# lr = 0.0001  # IMAEGNETTE_224
+# r = 0.0005
 # lr = 0.0005 # IMAEGNETTE_112
+# r = 0.005
+# lr = 0.0003 # IMAEGNETTE_64
+# r = 0.005
+# lr = 0.0005 # IMAEGNETTE_46
 # r = 0.005
 # lr = 0.003  # CIFAR10
 # r = 0.003
-# lr = 0.0001  # FASHION_MNIST
-# r = 0.05
+lr = 0.0001  # FASHION_MNIST
+r = 0.05
 for spec_type in [
     "mr_spectral_density",
     # "vr_spectral_density",
@@ -915,13 +938,35 @@ for spec_type in [
 ]:
     plot_activations(quants, spec_type=spec_type, for_lr=lr)
     y_lim = plt.gca().get_ylim()
+    x_lim = plt.gca().get_xlim()
     scale = r if spec_type == "mr_spectral_density" else 0.5
     y_lim = (y_lim[0], y_lim[1] * scale)
     print("ylim", y_lim)
+
+    # enable gridlines
+    plt.grid(True, which="both", linestyle="--", linewidth=0.5, alpha=faint_grids_alpha)
+
     plt.ylim(y_lim)
     plt.savefig(f"{output_dir}{dataset}_{spec_type}_{lr}.pdf", bbox_inches="tight")
     plt.close()
 
+# only for banner remove xticks and yticks
+    # plt.gca().set_ylabel("(log) spectral density")
+    # set x axis and y axis off
+    # plt.gca().set_xticks([])
+    # plt.gca().set_yticks([])
+    # plt.gca().set_xticklabels([])
+    # plt.gca().set_yticklabels([])
+    # get objects in the plot
+    # artists = plt.gca().get_children()
+    # remove objects except the legeneds
+    # for i,artist in enumerate(artists):
+    #     print(i,artist)
+    #     if i == 13:
+    #         for j,art in enumerate(artist.get_children()):
+    #             print(i,j,art)
+    #             if isinstance(art, mpl.axis.YTick):
+    #                 art.set_visible(False)
 
 # %% plot expected_freq
 def plot_ef(quants, spec_type):
@@ -956,7 +1001,9 @@ temp_mean, temp_std, temp = plot_ef(quants, spec_type=spec_type)
 # temp_std = temp_std.squeeze()
 
 # replace index with nice names
-temp = temp.drop(index="SOFTPLUS_B50")  # ONLY for FAHION_MNIST
+if "FASHION_MNIST" in dataset:
+    print("dropping SOFTPLUS_B50 for FASHION_MNIST")
+    temp = temp.drop(index="SOFTPLUS_B50")  # ONLY for FASHION_MNIST
 x_ticks = np.array([activation_betas[x] for x in temp.index])
 finite_max = 2 * np.max(x_ticks[x_ticks != np.inf])
 x_ticks = x_ticks.clip(0, finite_max)
@@ -991,8 +1038,8 @@ plt.xlabel(r"$\beta$")
 
 x_ticks = x.unique()
 print(len(x_ticks))
-# good_indices = [0,5,6,9,11,12] # IMAGENETTE_112
 # good_indices = [0,3,5,7,8,9] # IMAGENETTE_224
+# good_indices = [0,5,6,9,11,12] # IMAGENETTE_112
 # good_indices = [0,7,9,12,13,14] # CIFAR10
 good_indices = [0, 2, 9, 11, 14, 15]  # FAHION_MNIST
 x_ticks = x_ticks[good_indices]
@@ -1002,10 +1049,13 @@ x_labels = [x if x != f"{finite_max:.0f}" else r"$\infty$" for x in x_labels]
 plt.xticks(x_ticks, x_labels)
 
 ylims = plt.gca().get_ylim()
+xlims = plt.gca().get_xlim()
 # plt.ylim(ylims[0], ylims[1]*0.93) # IMAGENETTE_112
 # plt.ylim(ylims[0]*1.08, ylims[1]) # CIFAR10
 plt.gca().yaxis.set_major_formatter(mticker.ScalarFormatter())
 plt.gca().ticklabel_format(style="sci", axis="y", scilimits=(2, 4))
+
+plt.grid(True, which="both", linestyle="--", linewidth=0.5, alpha=faint_grids_alpha)
 
 plt.savefig(f"{output_dir}{dataset}_{spec_type}_{lr}_ef.pdf", bbox_inches="tight")
 # %% plot depths and activations
@@ -1304,7 +1354,7 @@ def plot_image_from_dataset(path, image_path):
 quants_path = f".tmp/quants/hooks/*/*.pt"
 paths = glob(quants_path)
 is_abs = False
-q = 0.01
+q = 0.005
 
 for path in paths:
     parent_dir = os.path.dirname(path)
@@ -1317,8 +1367,9 @@ for path in paths:
         plot_image_from_dataset(path, image_path)
 
     image_path = image_path.replace(".pdf", f"{parent_dir}.pdf")
-    plot_mean_rank(path, image_path, is_abs=is_abs)
+    # plot_mean_rank(path, image_path, is_abs=is_abs)
     plot_mean(path, image_path, is_abs=is_abs)
+    
     # break
 
 # %% plot accuracy
@@ -1454,4 +1505,109 @@ import seaborn as sns
 sns.heatmap(temp.pivot_table(index="x", columns="tgnv", values="0"))
 
 # plt.savefig(f"{output_dir}{dataset}_{spec_type}_{lr}_ef.pdf", bbox_inches="tight")
-# %% plot tail gaussian noise var
+# %% create tables explanation methods
+def pivot_expliners(quants, spec_type, for_explainer=None):
+    temp = quants.pivot_table(
+        columns=["explainer_name"],
+        index="activation",
+        values=spec_type,
+        aggfunc="count",
+    )
+    # print(temp)
+    temp_mean = quants.pivot_table(
+        columns=["explainer_name"],
+        index="activation",
+        values=spec_type,
+        aggfunc="mean",
+    )
+    temp_std = quants.pivot_table(
+        columns=["explainer_name"],
+        index="activation",
+        values=spec_type,
+        aggfunc="std",
+    )
+    return temp_mean, temp_std
+
+spec_type ="mr_expected_spectral_density"    
+temp_mean,temp_var = pivot_expliners(quants, spec_type=spec_type)
+# print(temp.columns.get_level_values(0))
+
+# display the tables in ipython notebook
+from IPython.display import display
+display(((temp_mean)*1e5).round(3))
+display(((temp_mean-temp_mean["VG"][0])*1e5).round(3))
+
+# %% plots for explanation methods
+def pivot_expliners(quants, spec_type, for_explainer=None):
+    temp = quants.pivot_table(
+        columns=["explainer_name"],
+        index="activation",
+        values=spec_type,
+        aggfunc="count",
+    )
+    print(temp)
+    temp_mean = quants.pivot_table(
+        columns=["explainer_name"],
+        index="activation",
+        values=spec_type,
+        aggfunc="mean",
+    )
+    return temp_mean
+
+spec_type = "mr_spectral_density"
+temp_mean = pivot_expliners(quants, spec_type=spec_type)
+print(temp.columns.get_level_values(0))
+
+for activation in activations:
+    plt.figure(figsize=(5, 5))
+    for explainer in temp_mean.columns:
+        plt.plot(temp_mean[explainer][activation], 
+                 label=explainer_nice_names[explainer],
+                 )
+        # check numpy nd array is not nan
+        if temp_mean[explainer][activation] is np.nan:
+            continue
+        ef = np.mean(np.arange(len(temp_mean[explainer][activation]))*temp_mean[explainer][activation])
+        print(explainer,activation,ef)
+    plt.yscale("log")
+    plt.ylabel("Power Spectral Density")
+    plt.xlabel("Frequency")
+    # plt.title(f"{explainer} {activation}")
+    ylim = plt.gca().get_ylim()
+    rate = 0.00003
+    plt.ylim(ylim[0]*(1.9), ylim[1] * rate)
+
+    plt.legend()
+    plt.savefig(f"{output_dir}{dataset}_{spec_type}_{explainer}_{activation}_ex.pdf", bbox_inches="tight")
+    # plt.close()
+
+# %% imshow explainer ranks
+
+import torch
+import matplotlib.pyplot as plt
+import os
+
+
+paths = glob.glob(".tmp/quants/hooks/*/*.pt")
+for path in paths:
+    parent_dir = path.split("/")[-2]
+    data = torch.load(path)
+    print(data.keys())
+    plt.imshow(data["image"].permute(1, 2, 0))
+    plt.xticks([])
+    plt.yticks([])
+    plt.savefig(f".tmp/visualizations/paper/{parent_dir}_{os.path.basename(path)}.pdf", bbox_inches="tight")
+
+    # plt.imshow(data["mean_rank"])
+    # plt.title(f"{data['mean_rank'].shape}")
+    # plt.xticks([])
+    # plt.yticks([])
+    # plt.savefig(f".tmp/visualizations/paper/{parent_dir}_{os.path.basename(path)}_mean_rank.pdf", bbox_inches="tight")
+    
+    plt.imshow(data["mean"])
+    plt.xticks([])
+    plt.yticks([])
+    plt.savefig(f".tmp/visualizations/paper/{parent_dir}_{os.path.basename(path)}_mean.pdf", bbox_inches="tight")
+
+    break
+# %%

@@ -217,7 +217,7 @@ def get_training_and_test_dataloader(
 
     if get_only_test:
         return test_dataloader, input_shape, num_classes
-    
+
     train_sampler = None if sampler is None else sampler(training_data)
 
     train_dataloader = DataLoader(
@@ -420,7 +420,7 @@ def get_aug_imagenet(
                 ),
             ]
         else:
-            raise ValueError
+            raise ValueError(f"Split {split} not recognized")
     elif augmentation == AugmentationSwitch.EXP_GEN:
         augmentations = [
             torchvision.transforms.ToTensor(),
@@ -443,6 +443,8 @@ def get_aug_imagenet(
             torchvision.transforms.ToTensor(),
             torchvision.transforms.Resize((img_size, img_size)),
         )
+
+    assert len(augmentations) > 0, "Augmentations list is empty"
     augmentations = torchvision.transforms.Compose(augmentations)
     return augmentations
 

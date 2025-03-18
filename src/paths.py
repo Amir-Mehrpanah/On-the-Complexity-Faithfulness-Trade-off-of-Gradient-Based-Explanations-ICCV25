@@ -9,7 +9,7 @@ IMAGENETTE_ROOT = f"{DATASETS_COMMON}/imagenette2.tgz"
 IMAGENET_ROOT = f"{DATASETS_COMMON}/imagenet.tgz"
 GRADS_ROOT = f"{WORKDIR}/.tmp/outputs/"
 
-
+CHECKPOINTS_DIR = f"{WORKDIR}/checkpoints/"
 COMPUTE_OUTPUT_DIR = "/scratch/local/outputs/"
 LOCAL_OUTPUT_DIR = f"{WORKDIR}/.tmp/outputs/"
 LOCAL_QUANTS_DIR = f"{WORKDIR}/.tmp/quants/"

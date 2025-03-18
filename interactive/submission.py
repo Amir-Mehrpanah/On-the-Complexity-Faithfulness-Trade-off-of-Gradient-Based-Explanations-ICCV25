@@ -1,6 +1,8 @@
 # %% imports
 import os
 
+import torch
+
 cwd = "/proj/azizpour-group/users/x_amime/projects/kernel-view-to-explainability/"
 os.chdir(cwd)
 
@@ -16,6 +18,7 @@ from src.utils import (
     LossSwitch,
     DatasetSwitch,
     ModelSwitch,
+    convert_str_to_explainer,
 )
 
 seed = [
@@ -42,7 +45,7 @@ activation = [
     #### because we do string matching sometimes
     #
     #
-    # ActivationSwitch.SOFTPLUS_B_9,
+    ActivationSwitch.SOFTPLUS_B_9,
     # ActivationSwitch.SOFTPLUS_B_8,
     # ActivationSwitch.SOFTPLUS_B_7,
     # ActivationSwitch.SOFTPLUS_B_6,
@@ -69,24 +72,26 @@ add_inverse = [
     False,
 ]
 model_name = [
-    # ModelSwitch.SIMPLE_CNN_DEPTH
+    ModelSwitch.SIMPLE_CNN_DEPTH
     # ModelSwitch.SIMPLE_CNN,
     # ModelSwitch.SIMPLE_CNN_BN,
     # ModelSwitch.SIMPLE_CNN_SK,
     # ModelSwitch.SIMPLE_CNN_SK_BN,
     # ModelSwitch.RESNET_BASIC,
     # ModelSwitch.RESNET_BOTTLENECK,
-    ModelSwitch.RESNET50,
+    # ModelSwitch.RESNET50,
+    # ModelSwitch.VIT_16,
+    # ModelSwitch.VIT_32,
 ]
 layers = [
-    [],
+    # [],
     # [1],
     # [2],
     # [3],
     # [4],
     # [5],
     # [6],
-    # [7],
+    [7],
     # [1, 1, 1, 1],
     # [2, 2, 2, 2],
     # [3, 3, 3, 3],
@@ -99,8 +104,8 @@ layers = [
 dataset = [
     # DatasetSwitch.FASHION_MNIST,
     # DatasetSwitch.CIFAR10,
-    # DatasetSwitch.IMAGENETTE,
-    DatasetSwitch.IMAGENET,
+    DatasetSwitch.IMAGENETTE,
+    # DatasetSwitch.IMAGENET,
 ]
 bias = [False]
 pre_act = [
@@ -138,9 +143,9 @@ lr = [
     # 1e-3,
     # 5e-4,
     # 4e-4,
-    # 3e-4,
+    3e-4,
     # 2e-4,
-    1e-4,
+    # 1e-4,
     # 5e-5,
     # 3e-5,
     # 4e-5,
@@ -192,15 +197,17 @@ submit_training(
 gaussian_noise_var = [0.0]
 gaussian_blur_var = [0.0]
 e_gaussian_noise_var = [
-    # 0.0,  # vg
-    0.1,  # sg
+    0.0,  # vg
+    # 0.1,  # sg
 ]
 e_gaussian_blur_var = [0.0]
 num_batches = [1]
-batch_size = [64] # SG 64, VG 1
+batch_size = [
+    1,
+    # 64,
+]  # SG 64, VG 1
 epoch = [0]
 num_distinct_images = [1000]
-no_perturbation = [True]
 eval_only_on_test = [True]
 stats = [
     {
@@ -301,9 +308,9 @@ submit_explainers(
 # %% run measurements on grads
 hook_samples = [
     [
-        404,
+        100,101,201,202,302,303,403,404,504,505,605,606,706,707,807,808,908,909
     ]
-]  # 202,303,404,505,606,707,808,909
+]
 name = [
     # "IMAGENETTE",
     # "IMAGENETTE/NONE",
@@ -314,14 +321,14 @@ name = [
     # "IMAGENETTE/46",
     # "IMAGENETTE/64",
     # "IMAGENETTE/112",
-    # "IMAGENETTE/224",
+    "IMAGENETTE/224",
     # "IMAGENETTE/j0",
     # "IMAGENETTE/j1",
     # "IMAGENETTE/j2",
     # "IMAGENETTE/j3",
     # "CIFAR10",
     # "FASHION_MNIST",
-    "IMAGENET",
+    # "IMAGENET",
 ]
 timeout = 20
 submit_measurements(
@@ -349,13 +356,22 @@ os.chdir(cwd)
 # !rm -r .tmp/outputs/*
 
 # %% only for debugging
+from src.models.utils import get_model
+from captum.attr import GuidedGradCam
 
-# arch = get_model(
-#     model_name=ModelSwitch.RESNET50,
-#     input_shape=(3, 224, 224),
-#     num_classes=1000,
-#     activation_fn=torch.nn.ReLU,
-#     layers=[],
-#     bias=False,
-#     pre_act=False,
-# )
+arch = get_model(
+    model_name=ModelSwitch.VIT_16,
+    input_shape=(3, 224, 224),
+    num_classes=1000,
+    activation_fn=ActivationSwitch.RELU,
+    bias=False,
+    pre_act=False,
+    layers=[],
+    checkpoint_path="checkpoints/IMAGENET/224/VIT_16::::RELU::0::0::0.0::0.0::0.0001.pt",
+    device="cpu",
+)
+explainer = convert_str_to_explainer(explainer=ExplainerSwitch.GRAD_CAM, model=arch, model_name=ModelSwitch.VIT_16)
+inputs = torch.randn(1, 3, 224, 224)
+explanation = explainer.attribute(inputs, target=0)
+print(explanation.shape)
+# %%
