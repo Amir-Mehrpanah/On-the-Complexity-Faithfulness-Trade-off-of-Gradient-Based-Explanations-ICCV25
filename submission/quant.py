@@ -54,7 +54,9 @@ def main(args):
 
     os.system("module load Fpart/1.5.1-gcc-8.5.0")
     DATA_DIR = os.path.join(DATA_DIR, args["name"])
-    move_data_to_compute_node(DATA_DIR, EXT == "tgz", COMPUTE_DATA_DIR)
+    
+    if args["port"] > 0: # data is locally available
+        move_data_to_compute_node(DATA_DIR, EXT == "tgz", COMPUTE_DATA_DIR)
 
     extract_the_grads_dataset_on_compute_node(COMPUTE_DATA_DIR, EXT, TARGET_DIR)
 

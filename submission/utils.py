@@ -14,6 +14,7 @@ def submit_training(
     port,
     timeout,
     warmup_epochs_ratio,
+    force_run,
     **args,
 ):
     # now = datetime.now().strftime("%Y%m%d-%H")
@@ -40,10 +41,15 @@ def submit_training(
         os.makedirs(checkpoint_path_dir_name, exist_ok=True)
 
     checkpoint_exists = args["checkpoint_path"].apply(lambda x: os.path.exists(x))
-    print("Checkpoints skipped because they do already exist")
-    args[checkpoint_exists]["checkpoint_path"].apply(print)
+    if force_run:
+        print("Checkpoints already exist, but not skipped because of the force_run flag")
+        valid_args = args
+    else:
+        print("Checkpoints skipped because they already exist")
+        valid_args = args[~checkpoint_exists]
+        
 
-    valid_args = args[~checkpoint_exists]
+    args[checkpoint_exists]["checkpoint_path"].apply(print)
     valid_args["port"] = port
     valid_args["block_main"] = block_main
     valid_args["timeout"] = timeout
@@ -231,7 +237,7 @@ def execute_job_submission(
         print("No jobs to run exiting")
         return
 
-    if port != None:
+    if port != None and port != 0:
         print("Running only the first job because of the debug flag")
         jobs_args = [jobs_args[0]]
 
@@ -254,8 +260,11 @@ def execute_job_submission(
     )
 
     if port == 0:
-        print("Running in locally")
-        func(jobs_args)
+        print("Running locally")
+        for job_arg in jobs_args:
+            print("Running job with args:", job_arg)
+            # run the function directly
+            func(job_arg)
     else:
         jobs = executor.map_array(func, jobs_args)
         print("Job submitted")

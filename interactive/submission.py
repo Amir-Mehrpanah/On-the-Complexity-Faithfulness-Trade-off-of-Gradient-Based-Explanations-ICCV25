@@ -21,6 +21,17 @@ from src.utils import (
     convert_str_to_explainer,
 )
 
+force_run = True  # set to True to force run even if checkpoints exist
+
+if False:  # debug
+    port = 5678
+    block_main = True
+    timeout = 10
+else:
+    port = None
+    block_main = False
+    timeout = 60
+
 seed = [
     0,
     # 1,
@@ -35,6 +46,7 @@ seed = [
 ]
 activation = [
     ActivationSwitch.RELU,
+    ActivationSwitch.GELU,
     # Only for ablation studies:
     # ActivationSwitch.LEAKY_RELU,
     # ActivationSwitch.SIGMOID,
@@ -45,7 +57,7 @@ activation = [
     #### because we do string matching sometimes
     #
     #
-    ActivationSwitch.SOFTPLUS_B_9,
+    # ActivationSwitch.SOFTPLUS_B_9,
     # ActivationSwitch.SOFTPLUS_B_8,
     # ActivationSwitch.SOFTPLUS_B_7,
     # ActivationSwitch.SOFTPLUS_B_6,
@@ -72,7 +84,7 @@ add_inverse = [
     False,
 ]
 model_name = [
-    ModelSwitch.SIMPLE_CNN_DEPTH
+    # ModelSwitch.SIMPLE_CNN_DEPTH
     # ModelSwitch.SIMPLE_CNN,
     # ModelSwitch.SIMPLE_CNN_BN,
     # ModelSwitch.SIMPLE_CNN_SK,
@@ -80,18 +92,18 @@ model_name = [
     # ModelSwitch.RESNET_BASIC,
     # ModelSwitch.RESNET_BOTTLENECK,
     # ModelSwitch.RESNET50,
-    # ModelSwitch.VIT_16,
+    ModelSwitch.VIT_16,
     # ModelSwitch.VIT_32,
 ]
 layers = [
-    # [],
+    [],
     # [1],
     # [2],
     # [3],
     # [4],
     # [5],
     # [6],
-    [7],
+    # [7],
     # [1, 1, 1, 1],
     # [2, 2, 2, 2],
     # [3, 3, 3, 3],
@@ -112,15 +124,6 @@ pre_act = [
     False,
     # True,
 ]
-
-if 0:  # debug
-    port = 5678
-    block_main = True
-    timeout = 10
-else:
-    port = None
-    block_main = False
-    timeout = 60
 
 num_workers = [16]
 prefetch_factor = [8]
@@ -154,11 +157,11 @@ lr = [
 
 # %% submit training
 batch_size = [256]
-min_test_acc = [0.0]
+min_test_acc = [0.6]
 patience = [1]
 
 ckpt_mod = [1]  # checkpoint if epoch % ckpt_mod == 0
-epochs = [1]
+epochs = [100]
 lr_decay_gamma = [1 - 1e-4]
 warmup_epochs_ratio = 0.0
 gaussian_noise_var = [0.0]
@@ -191,28 +194,29 @@ submit_training(
     img_size=img_size,
     lr_decay_gamma=lr_decay_gamma,
     min_test_acc=min_test_acc,
+    force_run=force_run,  # set to True to force run even if checkpoints exist
 )
 
 # %% submit grads
 gaussian_noise_var = [0.0]
 gaussian_blur_var = [0.0]
 e_gaussian_noise_var = [
-    0.0,  # vg
-    # 0.1,  # sg
+    # 0.0,  # vg
+    0.1,  # sg
 ]
 e_gaussian_blur_var = [0.0]
 num_batches = [1]
 batch_size = [
-    1,
-    # 64,
-]  # SG 64, VG 1
+    # 1, # VG
+    64, # SG
+]
 epoch = [0]
 num_distinct_images = [1000]
 eval_only_on_test = [True]
 stats = [
     {
         "mean_rank": None,
-        "mean": None,
+        # "mean": None,
         # "var_rank": None,
         # "var": None,
         "correct": None,
@@ -254,10 +258,10 @@ submit_grads(
 # %% submit explainers
 explainer = [
     ExplainerSwitch.GRAD_CAM,
-    ExplainerSwitch.LRP,
     ExplainerSwitch.DEEP_LIFT,
     ExplainerSwitch.INTEGRATED_GRAD,
     ExplainerSwitch.GUIDED_BPP,
+    # ExplainerSwitch.LRP,
 ]
 gaussian_noise_var = [0.0]
 gaussian_blur_var = [0.0]
@@ -269,7 +273,7 @@ eval_only_on_test = [True]
 stats = [
     {
         "mean_rank": None,
-        "mean": None,
+        # "mean": None,
         "correct": None,
         "image": None,
         "label": None,
@@ -308,7 +312,25 @@ submit_explainers(
 # %% run measurements on grads
 hook_samples = [
     [
-        100,101,201,202,302,303,403,404,504,505,605,606,706,707,807,808,908,909
+        2,
+        # 100,
+        # 101,
+        # 201,
+        # 202,
+        # 302,
+        # 303,
+        # 403,
+        # 404,
+        # 504,
+        # 505,
+        # 605,
+        # 606,
+        # 706,
+        # 707,
+        # 807,
+        # 808,
+        # 908,
+        # 909,
     ]
 ]
 name = [
@@ -334,7 +356,7 @@ timeout = 20
 submit_measurements(
     name=name,
     timeout=timeout,
-    port=port,
+    port=0,
     block_main=block_main,
     num_workers=num_workers,
     prefetch_factor=prefetch_factor,
@@ -370,7 +392,9 @@ arch = get_model(
     checkpoint_path="checkpoints/IMAGENET/224/VIT_16::::RELU::0::0::0.0::0.0::0.0001.pt",
     device="cpu",
 )
-explainer = convert_str_to_explainer(explainer=ExplainerSwitch.GRAD_CAM, model=arch, model_name=ModelSwitch.VIT_16)
+explainer = convert_str_to_explainer(
+    explainer=ExplainerSwitch.GRAD_CAM, model=arch, model_name=ModelSwitch.VIT_16
+)
 inputs = torch.randn(1, 3, 224, 224)
 explanation = explainer.attribute(inputs, target=0)
 print(explanation.shape)

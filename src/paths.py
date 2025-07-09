@@ -27,6 +27,8 @@ def get_local_data_dir(dataset):
         return f"{WORKDIR}/.tmp/MNIST/"
     elif str(dataset) == "FASHION_MNIST":
         return f"{WORKDIR}/.tmp/FASHION_MNIST/"
+    elif str(dataset) == "GRADS":
+        return GRADS_ROOT
     else:
         raise ValueError(f"Unknown dataset {dataset}")
 

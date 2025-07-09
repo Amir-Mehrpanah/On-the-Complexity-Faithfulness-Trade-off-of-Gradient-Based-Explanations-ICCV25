@@ -38,7 +38,7 @@ def spectral_density(image):
 def measure_grads(data):
     results = {
         "mr_spectral_density": spectral_density(data["mean_rank"]),
-        "m_spectral_density": spectral_density(data["mean"]),
+        # "m_spectral_density": spectral_density(data["mean"]),
         # "cosine_similarity": cosine_similarity(data),
         # "vr_spectral_density": spectral_density(data["var_rank"]),
         # "v_spectral_density": spectral_density(data["var"]),

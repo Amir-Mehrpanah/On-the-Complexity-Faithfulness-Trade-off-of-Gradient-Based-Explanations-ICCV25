@@ -80,6 +80,7 @@ class ActivationSwitch(ConvertableEnum):
     SOFTPLUS_B1 = 14
     LEAKY_RELU = 21
     RELU = 10
+    GELU = 32
     SIGMOID = 22
     TANH = 23
 
@@ -174,6 +175,9 @@ def convert_str_to_activation_fn(activation):
 
     if "RELU" in str_activation:
         return nn.ReLU()
+    
+    if "GELU" in str_activation:
+        return nn.GELU()
 
     if "SIGMOID" in str_activation:
         return nn.Sigmoid()

@@ -5,6 +5,20 @@ from src.models.simple_cnn import SimpleConvNet, SimpleConvSKBN
 from src.utils import ModelSwitch
 
 
+def replace_gelu_with_relu(module: torch.nn.Module) -> None:
+    """
+    Recursively replaces all nn.GELU layers in ``module`` with nn.ReLU(inplace=True).
+    The transformation is done in‑place and therefore mutates the original model.
+    """
+    for name, child in module.named_children():
+        # If the child itself is a GELU, replace it
+        if isinstance(child, torch.nn.GELU):
+            setattr(module, name, torch.nn.ReLU())
+        else:
+            # Otherwise recurse
+            replace_gelu_with_relu(child)
+
+
 def get_model(
     *,
     input_shape,
@@ -121,6 +135,14 @@ def get_model(
 
         model = torchvision.models.vit_b_16()
 
+        if isinstance(activation_fn, torch.nn.ReLU):
+            print("Using ReLU activation function for ViT-16")
+            replace_gelu_with_relu(model)
+        elif isinstance(activation_fn, torch.nn.GELU):
+            print("Using GELU, (default) activation function for ViT-16")
+        else:
+            raise ValueError(f"Unsupported activation function: {activation_fn}")
+
     if ModelSwitch.VIT_32 == model_name:
         from torchvision.models import vit_b_32
 
@@ -144,4 +166,5 @@ def get_model(
             model.load_state_dict(checkpoint)  # for older checkpoints
     else:
         print("No checkpoint found")
+
     return model

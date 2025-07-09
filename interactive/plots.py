@@ -17,15 +17,15 @@ from src.utils import AugmentationSwitch, DatasetSwitch
 
 
 output_dir = ".tmp/visualizations/paper/"
-input_size = 112
+input_size = 224
 dataset = [
     # f"*/IMAGENETTE::_*",
-    # f"IMAGENETTE/{input_size}::_*",
+    f"IMAGENETTE/{input_size}::_*",
     # f"IMAGENETTE/*::_*",
     # f"IMAGENETTE::_*",
     # f"IMAGENET::_*",
     # f"CIFAR10::_*",
-    f"FASHION_MNIST::_*",
+    # f"FASHION_MNIST::_*",
 ][0]
 quants_path = f".tmp/quants/{dataset}quants.pt"
 paths = glob(quants_path)
@@ -48,13 +48,13 @@ temp = pd.DataFrame(
         "activation",
         "seed",
         "l2reg",
-        # "tgnv",
-        # "tgbv",
+        "tgnv",
+        "tgbv",
         # "input_size",
         "lr",
-        # "explainer_name",
-        "egnv",
-        # "egbv",
+        "explainer_name",
+        # "egnv",
+        "egbv",
     ],
 )
 # temp.drop(columns=["egnv"], inplace=True)
@@ -62,7 +62,9 @@ temp = pd.DataFrame(
 temp["input_size"] = input_size
 temp["lr"] = temp["lr"].astype(float)
 if "explainer_name" in temp.columns:
-    temp.explainer_name.fillna("VG", inplace=True)
+    # temp.explainer_name.fillna("VG", inplace=True)
+    temp.explainer_name[temp.explainer_name == "0.0"] = "VG"
+    temp.explainer_name[temp.explainer_name == "0.1"] = "SG"
 quants = pd.concat([quants, temp], axis=1)
 
 quants = quants.set_index(
@@ -85,6 +87,7 @@ quants.value_counts("activation")
 faint_grids_alpha = 0.5
 activation_betas = {
     "RELU": np.inf,
+    "GELU": 0.1,
     "LEAKY_RELU": np.inf,
     "SOFTPLUS_B_1": 0.1,
     "SOFTPLUS_B_2": 0.2,
@@ -107,6 +110,7 @@ activation_betas = {
 }
 activation_nice_names = {
     "RELU": "ReLU",
+    "GELU": "GELU",
     "TANH": "Tanh",
     "SIGMOID": "Sigmoid",
     "LEAKY_RELU": "Leaky ReLU",
@@ -721,7 +725,6 @@ for spec_type in [
 
 # %% expected_freq_model
 
-
 def expected_freq_model(quants, spec_type="mr_expected_spectral_density"):
     temp = quants.pivot_table(
         columns=["input_size", "noise_scale", "model_name"],
@@ -780,7 +783,6 @@ for spec_type in [
 
 
 # %% plot tails input size
-
 
 def plot_activations(quants, spec_type, for_lr=None):
     temp = quants.pivot_table(
@@ -1060,7 +1062,6 @@ plt.grid(True, which="both", linestyle="--", linewidth=0.5, alpha=faint_grids_al
 plt.savefig(f"{output_dir}{dataset}_{spec_type}_{lr}_ef.pdf", bbox_inches="tight")
 # %% plot depths and activations
 
-
 def plot_depth(quants, spec_type):
     temp = quants.pivot_table(
         columns=["lr", "layers", "activation"],
@@ -1122,7 +1123,6 @@ dataset_path = os.path.basename(dataset)
 plt.savefig(f"{output_dir}{dataset_path}_{spec_type}_depth.pdf", bbox_inches="tight")
 
 # %% plot SKBN and activations
-
 
 def plot_skbn(quants, spec_type):
     temp = quants.pivot_table(
@@ -1535,7 +1535,7 @@ temp_mean,temp_var = pivot_expliners(quants, spec_type=spec_type)
 # display the tables in ipython notebook
 from IPython.display import display
 display(((temp_mean)*1e5).round(3))
-display(((temp_mean-temp_mean["VG"][0])*1e5).round(3))
+# display(((temp_mean-temp_mean["VG"][1])*1e5).round(3))
 
 # %% plots for explanation methods
 def pivot_expliners(quants, spec_type, for_explainer=None):
@@ -1588,7 +1588,8 @@ import matplotlib.pyplot as plt
 import os
 
 
-paths = glob.glob(".tmp/quants/hooks/*/*.pt")
+paths = glob(".tmp/quants/hooks/*/*.pt")
+print(paths)
 for path in paths:
     parent_dir = path.split("/")[-2]
     data = torch.load(path)
@@ -1598,16 +1599,16 @@ for path in paths:
     plt.yticks([])
     plt.savefig(f".tmp/visualizations/paper/{parent_dir}_{os.path.basename(path)}.pdf", bbox_inches="tight")
 
-    # plt.imshow(data["mean_rank"])
-    # plt.title(f"{data['mean_rank'].shape}")
-    # plt.xticks([])
-    # plt.yticks([])
-    # plt.savefig(f".tmp/visualizations/paper/{parent_dir}_{os.path.basename(path)}_mean_rank.pdf", bbox_inches="tight")
-    
-    plt.imshow(data["mean"])
+    plt.imshow(data["mean_rank"])
+    plt.title(f"{data['mean_rank'].shape}")
     plt.xticks([])
     plt.yticks([])
-    plt.savefig(f".tmp/visualizations/paper/{parent_dir}_{os.path.basename(path)}_mean.pdf", bbox_inches="tight")
+    plt.savefig(f".tmp/visualizations/paper/{parent_dir}_{os.path.basename(path)}_mean_rank.pdf", bbox_inches="tight")
+    
+    # plt.imshow(data["mean"])
+    # plt.xticks([])
+    # plt.yticks([])
+    # plt.savefig(f".tmp/visualizations/paper/{parent_dir}_{os.path.basename(path)}_mean.pdf", bbox_inches="tight")
 
-    break
+    # break
 # %%
