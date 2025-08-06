@@ -1,4 +1,4 @@
-# On the Complexity-Faithfulness Trade-off of Gradient-Based Explanations
+# On the Complexity-Faithfulness Trade-off of Gradient-Based Explanations [ICCV25]
 ReLU networks, while prevalent for visual data, have sharp transitions, sometimes relying on individual pixels for predictions, making vanilla gradient-based explanations noisy and difficult to interpret. 
 Existing methods, such as GradCAM, smooth these explanations by producing surrogate models at the cost of faithfulness. 
 We introduce a unifying spectral framework to systematically analyze and quantify smoothness, faithfulness, and their trade-off in explanations.
