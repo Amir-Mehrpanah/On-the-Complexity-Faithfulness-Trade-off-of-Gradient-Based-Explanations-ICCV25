@@ -8,4 +8,4 @@ Our analysis characterizes how surrogate-based smoothing distorts explanations, 
 Finally, we validate our theoretical findings across different design choices, datasets, and ablations.
 
 ---
-this code base is somewhat improved compared to the ECCV24 paper.
+this codebase is somewhat improved compared to the ECCV24 paper, and I'm working on a new codebase which is going to be public when the next paper is out.
